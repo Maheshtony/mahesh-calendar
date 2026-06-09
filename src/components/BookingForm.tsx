@@ -2,7 +2,13 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatSlotTime, getVisitorTimezone, isValidEmail } from "@/lib/slots";
+import {
+  MAHESH_TIMEZONE,
+  MAHESH_TIMEZONE_LABEL,
+  formatSlotRangeInTimeZone,
+  getVisitorTimezone,
+  isValidEmail
+} from "@/lib/slots";
 import { useBookingStore } from "@/store/booking-store";
 import type { Booking, CalendarSync } from "@/types/booking";
 
@@ -15,6 +21,7 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const visitorTimezone = getVisitorTimezone();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,14 +82,39 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="border-b border-slate-200 pb-4">
         <p className="text-sm font-bold text-slate-500">Selected slot</p>
-        <p className="mt-1 text-base font-extrabold text-ink">
-          {selectedSlot
-            ? `${formatSlotTime(selectedSlot.start)} - ${new Intl.DateTimeFormat(
-                undefined,
-                { hour: "numeric", minute: "2-digit" }
-              ).format(new Date(selectedSlot.end))}`
-            : "Select an available slot"}
-        </p>
+        {selectedSlot ? (
+          <div className="mt-2 space-y-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                Selected time in your timezone:
+              </p>
+              <p className="mt-1 text-base font-extrabold text-ink">
+                {formatSlotRangeInTimeZone(
+                  selectedSlot.start,
+                  selectedSlot.end,
+                  visitorTimezone
+                )}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                Mahesh receives this as:
+              </p>
+              <p className="mt-1 text-base font-extrabold text-ink">
+                {formatSlotRangeInTimeZone(
+                  selectedSlot.start,
+                  selectedSlot.end,
+                  MAHESH_TIMEZONE,
+                  MAHESH_TIMEZONE_LABEL
+                )}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-1 text-base font-extrabold text-ink">
+            Select an available slot
+          </p>
+        )}
       </div>
 
       <label className="block">

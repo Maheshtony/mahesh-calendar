@@ -95,9 +95,16 @@ export function CalendarBooking() {
               Book a 30-minute meeting with Mahesh
             </h1>
           </div>
-          <p className="rounded-md bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600 ring-1 ring-slate-200">
-            Times shown in your timezone: {timezone}
-          </p>
+          <div className="max-w-md rounded-md bg-slate-50 px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200">
+            <p className="font-extrabold text-ink">
+              All available times are shown in your local timezone.
+            </p>
+            <p className="mt-1 font-bold">Your timezone: {timezone}</p>
+            <p className="mt-2 leading-6">
+              Timezone handled automatically. Book in your local time; Mahesh
+              will see the correct time in IST.
+            </p>
+          </div>
         </div>
 
         <div className="h-[620px] overflow-hidden rounded-lg border border-slate-200/80 lg:h-[calc(100vh-210px)] lg:min-h-[560px]">

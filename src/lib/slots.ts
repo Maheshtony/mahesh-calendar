@@ -12,6 +12,8 @@ import type { Booking, Slot } from "@/types/booking";
 
 const SLOT_MINUTES = 30;
 const DAYS_TO_SHOW = 21;
+export const MAHESH_TIMEZONE = "Asia/Calcutta";
+export const MAHESH_TIMEZONE_LABEL = "IST";
 
 export function getVisitorTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "Local timezone";
@@ -22,6 +24,53 @@ export function formatSlotTime(iso: string) {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(new Date(iso));
+}
+
+function getFormatterTimeZone(timeZone: string) {
+  return timeZone && timeZone !== "Local timezone" ? timeZone : undefined;
+}
+
+function getShortTimeZoneName(iso: string, timeZone: string) {
+  const formatterTimeZone = getFormatterTimeZone(timeZone);
+
+  try {
+    const parts = new Intl.DateTimeFormat(undefined, {
+      timeZone: formatterTimeZone,
+      timeZoneName: "short"
+    }).formatToParts(new Date(iso));
+
+    return parts.find((part) => part.type === "timeZoneName")?.value || "";
+  } catch {
+    return "";
+  }
+}
+
+export function formatSlotRangeInTimeZone(
+  startIso: string,
+  endIso: string,
+  timeZone: string,
+  timeZoneLabel?: string
+) {
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  const formatterTimeZone = getFormatterTimeZone(timeZone);
+  const date = new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeZone: formatterTimeZone
+  }).format(start);
+  const timeFormatter = new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: formatterTimeZone
+  });
+  const zoneName =
+    timeZoneLabel || getShortTimeZoneName(startIso, timeZone) || timeZone;
+  const zoneText =
+    timeZoneLabel || timeZone === zoneName ? zoneName : `${zoneName} (${timeZone})`;
+
+  return `${date}, ${timeFormatter.format(start)} - ${timeFormatter.format(
+    end
+  )} ${zoneText}`;
 }
 
 export function isValidEmail(email: string) {

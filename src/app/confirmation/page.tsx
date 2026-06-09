@@ -3,7 +3,12 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { formatSlotTime, getVisitorTimezone } from "@/lib/slots";
+import {
+  MAHESH_TIMEZONE,
+  MAHESH_TIMEZONE_LABEL,
+  formatSlotRangeInTimeZone,
+  getVisitorTimezone
+} from "@/lib/slots";
 import { useBookingStore } from "@/store/booking-store";
 import type { Booking, CalendarSync } from "@/types/booking";
 
@@ -41,6 +46,7 @@ function ConfirmationContent() {
   const [booking, setBooking] = useState<Booking | null>(confirmation);
   const [timezone, setTimezone] = useState("Local timezone");
   const calendarSyncLabel = getCalendarSyncLabel(booking?.calendarSync);
+  const clientTimezone = booking?.timezone || timezone;
 
   useEffect(() => {
     setTimezone(getVisitorTimezone());
@@ -71,11 +77,37 @@ function ConfirmationContent() {
               Thanks, <strong>{booking.name}</strong>. Your meeting request has
               been booked.
             </p>
-            <p className="rounded-md bg-slate-50 p-4 font-bold text-ink">
-              {formatSlotTime(booking.slotStart)}
-            </p>
+            <div className="rounded-md bg-slate-50 p-4">
+              <p className="text-sm font-bold text-slate-500">
+                Your selected time:
+              </p>
+              <p className="mt-1 font-extrabold text-ink">
+                {formatSlotRangeInTimeZone(
+                  booking.slotStart,
+                  booking.slotEnd,
+                  clientTimezone
+                )}
+              </p>
+            </div>
+            <div className="rounded-md bg-slate-50 p-4">
+              <p className="text-sm font-bold text-slate-500">
+                Mahesh calendar time:
+              </p>
+              <p className="mt-1 font-extrabold text-ink">
+                {formatSlotRangeInTimeZone(
+                  booking.slotStart,
+                  booking.slotEnd,
+                  MAHESH_TIMEZONE,
+                  MAHESH_TIMEZONE_LABEL
+                )}
+              </p>
+            </div>
             <p className="rounded-md bg-[#e7f5f7] p-4 text-sm font-bold text-ocean">
-              Visitor timezone: {booking.timezone || timezone}
+              Visitor timezone: {clientTimezone}
+            </p>
+            <p className="rounded-md bg-[#eef8fa] p-4 text-sm font-bold leading-6 text-ocean">
+              Timezone handled automatically. Book in your local time; Mahesh
+              will see the correct time in IST.
             </p>
             <p
               className={`rounded-md p-4 text-sm font-bold ${calendarSyncLabel.className}`}

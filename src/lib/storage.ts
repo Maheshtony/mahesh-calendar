@@ -1,21 +1,9 @@
 import { promises as fs } from "fs";
 import path from "path";
 import type { Booking, BookingDraft, CalendarSync } from "@/types/booking";
-import { getSupabaseServerClient } from "@/lib/supabase";
 import { isValidEmail } from "./slots";
 
 const bookingsFile = path.join(process.cwd(), "data", "bookings.json");
-
-type BookingRow = {
-  id: string;
-  name: string;
-  email: string;
-  notes: string | null;
-  start_time: string;
-  end_time: string;
-  timezone: string;
-  created_at: string;
-};
 
 type ValidatedBookingDraft = {
   id: string;
@@ -38,20 +26,7 @@ async function ensureStorageFile() {
   }
 }
 
-function rowToBooking(row: BookingRow): Booking {
-  return {
-    id: row.id,
-    name: row.name,
-    email: row.email,
-    notes: row.notes || "",
-    slotStart: row.start_time,
-    slotEnd: row.end_time,
-    timezone: row.timezone,
-    createdAt: row.created_at
-  };
-}
-
-function validateBookingDraft(draft: BookingDraft): ValidatedBookingDraft {
+export function validateBookingDraft(draft: BookingDraft): ValidatedBookingDraft {
   const name = draft.name.trim();
   const email = draft.email.trim();
   const timezone = draft.timezone.trim();
@@ -87,7 +62,7 @@ function validateBookingDraft(draft: BookingDraft): ValidatedBookingDraft {
   };
 }
 
-async function readLocalBookings(): Promise<Booking[]> {
+export async function readBookings(): Promise<Booking[]> {
   await ensureStorageFile();
   const content = await fs.readFile(bookingsFile, "utf8");
 
@@ -102,92 +77,14 @@ async function writeLocalBookings(bookings: Booking[]) {
   await fs.writeFile(bookingsFile, JSON.stringify(bookings, null, 2), "utf8");
 }
 
-export async function readBookings(): Promise<Booking[]> {
-  const supabase = getSupabaseServerClient();
-
-  if (supabase) {
-    const { data, error } = await supabase
-      .from("bookings")
-      .select("*")
-      .order("start_time", { ascending: true });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return ((data || []) as BookingRow[]).map(rowToBooking);
-  }
-
-  return readLocalBookings();
-}
-
 export async function findBooking(id: string): Promise<Booking | null> {
-  const supabase = getSupabaseServerClient();
-
-  if (supabase) {
-    const { data, error } = await supabase
-      .from("bookings")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return data ? rowToBooking(data as BookingRow) : null;
-  }
-
-  const bookings = await readLocalBookings();
+  const bookings = await readBookings();
   return bookings.find((booking) => booking.id === id) || null;
 }
 
 export async function createBooking(draft: BookingDraft): Promise<Booking> {
   const validatedDraft = validateBookingDraft(draft);
-  const supabase = getSupabaseServerClient();
-
-  if (supabase) {
-    const { data: existingBooking, error: lookupError } = await supabase
-      .from("bookings")
-      .select("id")
-      .eq("start_time", validatedDraft.slotStart)
-      .maybeSingle();
-
-    if (lookupError) {
-      throw new Error(lookupError.message);
-    }
-
-    if (existingBooking) {
-      throw new Error("This slot has already been booked.");
-    }
-
-    const { data, error } = await supabase
-      .from("bookings")
-      .insert({
-        id: validatedDraft.id,
-        name: validatedDraft.name,
-        email: validatedDraft.email,
-        notes: validatedDraft.notes,
-        start_time: validatedDraft.slotStart,
-        end_time: validatedDraft.slotEnd,
-        timezone: validatedDraft.timezone,
-        created_at: validatedDraft.createdAt
-      })
-      .select("*")
-      .single();
-
-    if (error) {
-      if (error.code === "23505") {
-        throw new Error("This slot has already been booked.");
-      }
-
-      throw new Error(error.message);
-    }
-
-    return rowToBooking(data as BookingRow);
-  }
-
-  const bookings = await readLocalBookings();
+  const bookings = await readBookings();
   const slotTaken = bookings.some(
     (booking) => booking.slotStart === validatedDraft.slotStart
   );
@@ -217,20 +114,7 @@ export async function updateBookingCalendarSync(
   bookingId: string,
   calendarSync: CalendarSync
 ): Promise<Booking | null> {
-  const supabase = getSupabaseServerClient();
-
-  if (supabase) {
-    const booking = await findBooking(bookingId);
-
-    return booking
-      ? {
-          ...booking,
-          calendarSync
-        }
-      : null;
-  }
-
-  const bookings = await readLocalBookings();
+  const bookings = await readBookings();
   const bookingIndex = bookings.findIndex((booking) => booking.id === bookingId);
 
   if (bookingIndex === -1) {

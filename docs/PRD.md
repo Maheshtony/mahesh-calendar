@@ -12,9 +12,9 @@ The MVP stays simple, low-cost, and deployable on Vercel. Clients do not need lo
 - Show available slots in the visitor's timezone.
 - Hide past slots.
 - Prevent duplicate bookings for the same start time.
-- Store bookings locally during development.
-- Support optional Supabase storage for production.
-- Support optional Google Calendar sync for Mahesh when configured.
+- Store bookings locally during development only when Google Calendar is not configured.
+- Use Google Calendar as the production source of truth for busy slots and bookings.
+- Keep Supabase as optional future storage, not required for production booking.
 - Keep setup easy: `npm install`, `npm run dev`, local port `3001`.
 
 ## Non-Goals
@@ -35,7 +35,7 @@ A client opens Mahesh's public booking link, chooses a date and 30-minute slot, 
 
 ### Mahesh
 
-Mahesh configures private environment variables for optional production services such as Supabase and Google Calendar. In the MVP, Mahesh does not use an admin UI.
+Mahesh configures private environment variables for Google Calendar. In the MVP, Mahesh does not use an admin UI.
 
 ## MVP Scope
 
@@ -45,9 +45,9 @@ Mahesh configures private environment variables for optional production services
 - Available 30-minute slots.
 - Booking form with name, email, and notes.
 - Confirmation page.
-- Local JSON development storage.
-- Optional Supabase production storage.
-- Optional server-side Google Calendar event creation.
+- Local JSON development fallback.
+- Server-side Google Calendar busy reads and event creation.
+- Optional future Supabase storage for reporting or backup, not required now.
 
 ## Booking Rules
 
@@ -57,6 +57,7 @@ Mahesh configures private environment variables for optional production services
 - Booked slots are disabled.
 - Duplicate booking for the same start time is prevented.
 - Booking start and end times are stored internally as UTC ISO strings.
+- In production, duplicate protection checks Mahesh's Google Calendar busy events before creating an event.
 
 ## Timezone Behavior
 
@@ -68,9 +69,9 @@ Mahesh configures private environment variables for optional production services
 ## Success Criteria
 
 - A client can book a future available 30-minute slot.
-- The booking is saved to `data/bookings.json` when Supabase is not configured.
+- The booking is created in Google Calendar in production.
+- Local JSON fallback works only for development when Google Calendar is not configured.
 - The same slot cannot be booked twice.
 - The confirmation page shows booked date/time and timezone.
-- Google Calendar sync is skipped safely when not configured.
+- Production shows a configuration error if Google Calendar is missing.
 - The app runs locally on `http://localhost:3001`.
-

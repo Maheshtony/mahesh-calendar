@@ -73,6 +73,18 @@ export function formatSlotRangeInTimeZone(
   )} ${zoneText}`;
 }
 
+export function slotsOverlap(
+  firstStartIso: string,
+  firstEndIso: string,
+  secondStartIso: string,
+  secondEndIso: string
+) {
+  return (
+    Date.parse(firstStartIso) < Date.parse(secondEndIso) &&
+    Date.parse(firstEndIso) > Date.parse(secondStartIso)
+  );
+}
+
 export function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
@@ -89,7 +101,19 @@ export function formatDateLabel(date: Date) {
 }
 
 export function generateSlots(bookings: Booking[]): Slot[] {
-  const bookedStarts = new Set(bookings.map((booking) => booking.slotStart));
+  return generateSlotsFromBusyRanges(
+    bookings.map((booking) => ({
+      start: booking.slotStart,
+      end: booking.slotEnd
+    })),
+    getVisitorTimezone()
+  );
+}
+
+export function generateSlotsFromBusyRanges(
+  busyRanges: Array<{ start: string; end: string }>,
+  visitorTimezone: string
+): Slot[] {
   const now = new Date();
   const slots: Slot[] = [];
 
@@ -106,12 +130,28 @@ export function generateSlots(bookings: Booking[]): Slot[] {
         if (!isAfter(start, now)) {
           continue;
         }
+        const available = !busyRanges.some((busyRange) =>
+          slotsOverlap(startIso, end.toISOString(), busyRange.start, busyRange.end)
+        );
 
         slots.push({
           id: startIso,
           start: startIso,
+          start_time: startIso,
           end: end.toISOString(),
-          available: !bookedStarts.has(startIso)
+          end_time: end.toISOString(),
+          localDisplayTime: formatSlotRangeInTimeZone(
+            startIso,
+            end.toISOString(),
+            visitorTimezone
+          ),
+          maheshDisplayTime: formatSlotRangeInTimeZone(
+            startIso,
+            end.toISOString(),
+            MAHESH_TIMEZONE,
+            MAHESH_TIMEZONE_LABEL
+          ),
+          available
         });
       }
     }

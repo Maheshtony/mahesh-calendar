@@ -8,9 +8,9 @@
 - FullCalendar for month calendar UI.
 - date-fns for date helpers.
 - Zustand for client booking state.
-- Local JSON file storage for development.
-- Optional Supabase storage for production.
-- Optional Google Calendar sync through `googleapis`.
+- Google Calendar production booking storage through `googleapis`.
+- Local JSON file storage for development fallback only.
+- Optional future Supabase storage for reporting or backup.
 
 ## Runtime
 
@@ -38,32 +38,30 @@ http://localhost:3001
 - `src/components/CalendarBooking.tsx` - primary booking UI.
 - `src/components/BookingForm.tsx` - booking form and submission.
 - `src/lib/slots.ts` - slot generation, formatting, timezone helpers, email validation.
-- `src/lib/storage.ts` - storage adapter for Supabase or local JSON.
+- `src/lib/storage.ts` - local JSON development fallback.
 - `src/lib/supabase.ts` - server-side Supabase client creation.
-- `src/lib/google-calendar.ts` - server-side Google Calendar event helper.
+- `src/lib/google-calendar.ts` - server-side Google Calendar event and busy-slot helper.
 - `data/bookings.json` - local development booking storage.
 
-## Storage Adapter
+## Booking Source Of Truth
 
-`src/lib/storage.ts` is the source of truth for booking persistence.
+Google Calendar is the production source of truth.
 
-If both Supabase environment variables exist, storage uses the Supabase `bookings` table:
+Production booking flow:
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- read busy events from Mahesh Google Calendar.
+- mark overlapping 30-minute slots unavailable.
+- check the selected slot again at submit time.
+- create the booking directly as a Google Calendar event.
 
-If either is missing, storage falls back to `data/bookings.json`.
+Local development fallback:
 
-The API behavior stays the same in both modes:
+- if Google Calendar env vars are missing and `NODE_ENV` is not production, use `data/bookings.json`.
+- never use local JSON as production source of truth.
 
-- read bookings.
-- find booking by id.
-- create booking.
-- prevent duplicate start times.
+## Supabase Future Table
 
-## Supabase Table
-
-The production table is named `bookings`.
+Supabase is optional future storage, not required for the current production booking flow. If added later, the table can be named `bookings`.
 
 Fields:
 
@@ -78,27 +76,27 @@ Fields:
 
 A unique index on `start_time` prevents duplicate bookings.
 
-## Google Calendar Sync
+## Google Calendar
 
-Google Calendar sync happens after a booking is saved.
+Google Calendar handles production availability and booking creation.
 
-The helper returns one of:
+The helper supports:
 
-- `created`
-- `skipped`
-- `failed`
+- create event.
+- read busy events for a date range.
+- check whether a selected slot overlaps a busy event.
+- read an event by id for confirmation.
 
-If Google Calendar environment variables are missing, sync is skipped and booking still succeeds.
+If Google Calendar environment variables are missing in production, booking is disabled with a configuration message.
 
 ## Data Flow
 
 1. Client opens `/calendar`.
-2. UI fetches existing bookings from `/api/bookings`.
+2. UI fetches slots from `/api/slots`.
 3. Browser detects visitor timezone.
-4. Slot helper generates future 30-minute slots.
+4. API reads Google Calendar busy events or local fallback bookings in development.
 5. Client selects a slot and submits the form.
 6. API validates the booking.
-7. Storage adapter saves to Supabase or local JSON.
-8. API attempts optional Google Calendar sync.
+7. API checks Google Calendar busy state again.
+8. API creates the Google Calendar event.
 9. Client navigates to `/confirmation?id=<bookingId>`.
-

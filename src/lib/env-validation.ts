@@ -41,9 +41,17 @@ export function getSupabaseEnvStatus() {
 }
 
 export function getStorageMode() {
-  return getSupabaseEnvStatus().configured ? "supabase" : "local-json";
+  if (getGoogleCalendarEnvStatus().configured) {
+    return "google-calendar";
+  }
+
+  return isProduction() ? "not-configured" : "local-json";
 }
 
 export function getGooglePrivateKey() {
   return process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+}
+
+export function isProduction() {
+  return process.env.NODE_ENV === "production";
 }

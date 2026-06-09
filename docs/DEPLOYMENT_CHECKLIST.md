@@ -15,7 +15,7 @@ Mahesh Calendar is deployable on Vercel as a simple Next.js 15 app. Clients do n
 - Confirm `/confirmation?id=<bookingId>` loads.
 - Confirm the same slot cannot be booked again.
 - Confirm `/api/health` returns `status: ok`.
-- Confirm local JSON fallback works when Supabase env vars are missing.
+- Confirm local JSON fallback works only in local development when Google Calendar env vars are missing.
 
 ## Environment Variables Checklist
 
@@ -23,13 +23,13 @@ Required for local app URL:
 
 - `NEXT_PUBLIC_APP_URL=http://localhost:3001`
 
-Optional Google Calendar variables:
+Required production Google Calendar variables:
 
 - `GOOGLE_CLIENT_EMAIL`
 - `GOOGLE_PRIVATE_KEY`
 - `GOOGLE_CALENDAR_ID`
 
-Optional Supabase variables:
+Optional future Supabase variables:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -49,19 +49,20 @@ Security checks:
 - `GOOGLE_CLIENT_EMAIL` is set.
 - `GOOGLE_PRIVATE_KEY` is set with escaped newlines if stored on one line.
 - `GOOGLE_CALENDAR_ID` is set.
-- Booking still succeeds if Google Calendar sync fails.
+- Production booking succeeds only when Google Calendar is configured and event creation succeeds.
 - `/api/health` reports `googleCalendar: configured` only when all Google vars are present.
 
-## Supabase Configuration Checklist
+## Supabase Future Configuration Checklist
 
-- Supabase project exists.
+- Supabase is not required for current production booking.
+- Supabase project exists if future reporting or backup storage is added.
 - `bookings` table exists.
 - `start_time` has a unique index.
 - `NEXT_PUBLIC_SUPABASE_URL` is set.
 - `SUPABASE_SERVICE_ROLE_KEY` is set as a server-side environment variable.
 - Service role key is never exposed to client components.
-- `/api/health` reports `storage: supabase` only when both Supabase vars are present.
-- If Supabase vars are missing, `/api/health` reports `storage: local-json`.
+- `/api/health` does not require Supabase for production readiness.
+- `/api/health` reports `storage: google-calendar` when Google Calendar is configured.
 
 Required SQL:
 
@@ -88,11 +89,11 @@ create unique index if not exists bookings_start_time_key
 - No hardcoded API keys are present.
 - Booking form validates name, email, and selected slot.
 - Booking API validates name, email, selected slot, and future start time.
-- Duplicate booking protection exists in local JSON mode.
-- Duplicate booking protection exists in Supabase mode.
+- Duplicate booking protection exists through Google Calendar busy checks in production.
+- Duplicate booking protection exists in local JSON development fallback.
 - Booking times are stored internally as UTC ISO strings.
 - Visitor timezone is detected in the browser and stored with the booking.
-- Google Calendar errors return failed sync status without blocking booking success.
+- Google Calendar errors prevent production booking creation so clients do not receive false confirmations.
 
 ## Vercel Deployment Checklist
 
@@ -101,19 +102,18 @@ create unique index if not exists bookings_start_time_key
 - Use install command: `npm install`.
 - Use build command: `npm run build`.
 - Set `NEXT_PUBLIC_APP_URL` to the production URL.
-- Add Supabase env vars for production storage.
-- Add Google Calendar env vars only if sync should be enabled.
+- Add Google Calendar env vars for production booking.
+- Add Supabase env vars only if future storage/reporting is added.
 - Deploy.
 - Open `/api/health` on the production URL.
 - Make a test booking.
-- Confirm the booking appears in Supabase if configured.
-- Confirm Google Calendar sync status on confirmation page.
+- Confirm the booking appears in Mahesh Google Calendar.
+- Confirm Google Calendar sync status is created on confirmation page.
 
 ## Rollback Checklist
 
 - Use Vercel's previous deployment rollback if a deploy fails.
-- If Supabase configuration causes issues, remove Supabase env vars to fall back to local JSON for development only.
-- If Google Calendar sync causes issues, remove Google Calendar env vars; bookings will still succeed with skipped sync.
+- If Supabase configuration causes issues, remove Supabase env vars; current booking flow does not require Supabase.
+- If Google Calendar configuration causes issues, rollback the deployment or fix env vars; production booking requires Google Calendar.
 - Preserve `bookings` table data before schema changes.
 - Re-run a booking smoke test after rollback.
-

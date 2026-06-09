@@ -34,11 +34,11 @@ Google Calendar sync is server-side only.
 
 Clients do not authenticate with Google. They do not need Google login. The server uses the configured service account after a local booking has already been saved.
 
-If Google Calendar credentials are missing, the app skips sync safely and does not crash.
+If Google Calendar credentials are missing in production, the app does not accept bookings and shows a configuration message. In local development only, JSON fallback can be used for testing.
 
 ## Supabase Security
 
-Supabase is optional production storage.
+Supabase is optional future storage and is not required for the current production booking flow.
 
 The service role key must only be used server-side. It should be configured in Vercel environment variables or `.env.local`, never in client components.
 
@@ -46,7 +46,7 @@ For the MVP, the server-side API controls booking creation and duplicate prevent
 
 ## Local JSON Storage
 
-Local JSON storage is for development and simple local testing.
+Local JSON storage is for development and simple local testing only.
 
 Bookings are stored in:
 
@@ -54,7 +54,7 @@ Bookings are stored in:
 data/bookings.json
 ```
 
-This is not durable enough for production serverless deployments. Use Supabase for production on Vercel.
+This is not durable enough for production serverless deployments. Use Google Calendar as the production source of truth.
 
 ## Validation
 
@@ -78,4 +78,3 @@ Validation is performed in the client for user experience and on the server for 
 - No cancellation flow yet.
 
 These can be added later if actual usage requires them.
-

@@ -2,7 +2,7 @@
 
 Mahesh Calendar is a standalone Next.js 15 + TypeScript MVP for a personal booking calendar.
 
-Clients can view available 30-minute meeting slots, see times in their own timezone, submit a booking form, and receive a confirmation page. Bookings are stored locally in `data/bookings.json` for the initial MVP.
+Clients can view available 30-minute meeting slots, see times in their own timezone, submit a booking form, and receive a confirmation page. Google Calendar is the production source of truth for busy slots and confirmed bookings.
 
 Current owner availability is every day, 24 hours per day. Past slots are hidden, booked slots are disabled, and booking times are stored internally as UTC ISO strings.
 
@@ -15,8 +15,8 @@ Current owner availability is every day, 24 hours per day. Past slots are hidden
 - date-fns
 - Zustand
 - googleapis
-- Supabase optional production storage
-- Local JSON storage
+- Google Calendar production booking storage
+- Local JSON storage for development fallback only
 
 ## Run Locally
 
@@ -35,7 +35,9 @@ Port `3000` is intentionally not used.
 
 ## Google Calendar Setup
 
-The MVP works without Google Calendar environment variables. If any Google Calendar variables are missing, bookings still save locally and calendar sync is marked as skipped.
+Google Calendar is the production source of truth. In production, bookings are created directly on Mahesh's Google Calendar and availability is read from Mahesh's busy events.
+
+Local development can run without Google Calendar credentials. If Google Calendar variables are missing locally, the app uses `data/bookings.json` as a development fallback only.
 
 To prepare Google Calendar sync locally:
 
@@ -55,13 +57,13 @@ NEXT_PUBLIC_APP_URL=http://localhost:3001
 
 For `GOOGLE_PRIVATE_KEY`, keep the key server-side only. Do not expose it in any `NEXT_PUBLIC_` variable. If the key is stored on one line, use escaped newlines as `\n`.
 
-Clients do not need Google login. The server uses the service account only after a local booking has already been saved.
+Clients do not need Google login. The server uses the service account to read busy slots and create events directly in Mahesh's calendar.
 
-## Supabase Storage Setup
+## Supabase Future Storage Notes
 
-Supabase is optional. If `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are not set, the app uses `data/bookings.json` automatically.
+Supabase is not required for the current production booking flow. Google Calendar is the active source of truth.
 
-To use Supabase in production, create a `bookings` table with this SQL:
+If Supabase is added later for reporting, analytics, or backup storage, this legacy table shape can be used:
 
 ```sql
 create table if not exists bookings (
@@ -81,7 +83,7 @@ create unique index if not exists bookings_start_time_key
 
 The unique index prevents duplicate bookings for the same `start_time`.
 
-Add these variables to `.env.local` for local Supabase testing, or to Vercel project environment variables for deployment:
+Optional future Supabase variables:
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL=
@@ -94,11 +96,10 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 1. Deploy the `mahesh-calendar` folder as the app root.
 2. Set `NEXT_PUBLIC_APP_URL` to the deployed URL.
-3. Add Supabase variables only if using Supabase storage.
-4. Add Google Calendar variables only if using Google Calendar sync.
-5. Keep the service role key and Google private key as server-side environment variables.
+3. Add Google Calendar variables for production booking.
+4. Keep the Google private key as a server-side environment variable.
 
-Local JSON storage is useful for development. For Vercel or other serverless production deployments, use Supabase because local filesystem writes are not durable across deployments or serverless instances.
+Local JSON storage is useful for development only. Vercel production must use Google Calendar credentials because filesystem writes are not durable across deployments or serverless instances.
 
 ## Vercel Deployment Guide
 
@@ -108,7 +109,7 @@ Local JSON storage is useful for development. For Vercel or other serverless pro
 4. Use the default Next.js framework preset.
 5. Use `npm install` as the install command.
 6. Use `npm run build` as the build command.
-7. Add production environment variables in Vercel.
+7. Add Google Calendar production environment variables in Vercel.
 8. Deploy.
 9. Visit `/api/health` on the deployed URL.
 10. Make a test booking from `/calendar`.
@@ -137,14 +138,14 @@ Base app variable:
 NEXT_PUBLIC_APP_URL=https://your-vercel-app-url
 ```
 
-Optional Supabase production storage:
+Optional future Supabase storage:
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-Optional Google Calendar sync:
+Required Google Calendar production booking:
 
 ```text
 GOOGLE_CLIENT_EMAIL=
@@ -152,7 +153,7 @@ GOOGLE_PRIVATE_KEY=
 GOOGLE_CALENDAR_ID=
 ```
 
-The app continues working if optional Supabase or Google Calendar variables are missing. Missing Supabase variables use local JSON fallback. Missing Google Calendar variables skip sync safely.
+The app continues working locally if Google Calendar variables are missing by using JSON fallback. In production, missing Google Calendar variables show a configuration error instead of accepting bookings.
 
 Do not expose these server-side secrets to frontend code:
 
@@ -174,8 +175,8 @@ Example response:
 ```json
 {
   "status": "ok",
-  "storage": "local-json",
-  "googleCalendar": "not-configured",
+  "storage": "google-calendar",
+  "googleCalendar": "configured",
   "timestamp": "2026-06-09T00:00:00.000Z"
 }
 ```
@@ -186,12 +187,12 @@ Example response:
 - `/calendar` - Calendar and booking form
 - `/confirmation` - Booking confirmation page
 
-## Local Storage
+## Local Development Storage
 
-When Supabase is not configured, bookings are written to:
+When Google Calendar is not configured locally, bookings are written to:
 
 ```text
 data/bookings.json
 ```
 
-This is suitable for local MVP testing. Replace it with a database before production use across multiple server instances.
+This is suitable for local MVP testing only. Production booking storage uses Google Calendar.

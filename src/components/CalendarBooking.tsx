@@ -10,36 +10,42 @@ import { BookingForm } from "@/components/BookingForm";
 import {
   formatDateLabel,
   formatTimeOnly,
-  generateSlots,
   getSlotsForDay,
   getVisitorTimezone
 } from "@/lib/slots";
 import { useBookingStore } from "@/store/booking-store";
-import type { Booking, Slot } from "@/types/booking";
+import type { Slot } from "@/types/booking";
 
 export function CalendarBooking() {
-  const bookings = useBookingStore((state) => state.bookings);
   const selectedDate = useBookingStore((state) => state.selectedDate);
   const selectedSlot = useBookingStore((state) => state.selectedSlot);
-  const setBookings = useBookingStore((state) => state.setBookings);
   const setSelectedDate = useBookingStore((state) => state.setSelectedDate);
   const setSelectedSlot = useBookingStore((state) => state.setSelectedSlot);
+  const [slots, setSlots] = useState<Slot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [timezone, setTimezone] = useState("Local timezone");
+  const [availabilityMessage, setAvailabilityMessage] = useState("");
 
-  const refreshBookings = useCallback(async () => {
-    const response = await fetch("/api/bookings");
-    const payload = (await response.json()) as { bookings: Booking[] };
-    setBookings(payload.bookings);
+  const refreshSlots = useCallback(async (visitorTimezone = timezone) => {
+    setIsLoading(true);
+    const response = await fetch(
+      `/api/slots?timezone=${encodeURIComponent(visitorTimezone)}`
+    );
+    const payload = (await response.json()) as {
+      message?: string;
+      slots?: Slot[];
+    };
+    setSlots(payload.slots || []);
+    setAvailabilityMessage(payload.message || "");
     setIsLoading(false);
-  }, [setBookings]);
+  }, [timezone]);
 
   useEffect(() => {
-    setTimezone(getVisitorTimezone());
-    void refreshBookings();
-  }, [refreshBookings]);
+    const detectedTimezone = getVisitorTimezone();
+    setTimezone(detectedTimezone);
+    void refreshSlots(detectedTimezone);
+  }, [refreshSlots]);
 
-  const slots = useMemo(() => generateSlots(bookings), [bookings]);
   const slotsForSelectedDate = useMemo(
     () => getSlotsForDay(slots, new Date(selectedDate)),
     [selectedDate, slots]
@@ -139,6 +145,11 @@ export function CalendarBooking() {
           <p className="mt-4 rounded-md bg-[#eef8fa] px-3 py-2 text-sm font-bold leading-6 text-[#247889]">
             Bookings are saved securely. Available slots update after booking.
           </p>
+          {availabilityMessage ? (
+            <p className="mt-3 rounded-md bg-slate-50 px-3 py-2 text-sm font-bold leading-6 text-slate-600">
+              {availabilityMessage}
+            </p>
+          ) : null}
         </section>
 
         <section className="rounded-lg border border-slate-200/80 bg-white p-5 shadow-sm">
@@ -180,7 +191,7 @@ export function CalendarBooking() {
 
         <section className="rounded-lg border border-slate-200/80 bg-white p-5 shadow-sm">
           <h3 className="mb-4 text-lg font-black text-ink">Booking Details</h3>
-          <BookingForm onBooked={refreshBookings} />
+          <BookingForm onBooked={() => refreshSlots()} />
         </section>
       </aside>
     </div>

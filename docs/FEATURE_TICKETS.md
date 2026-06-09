@@ -48,49 +48,48 @@ Acceptance Criteria:
 - Notes optional.
 - On success, client goes to confirmation page.
 
-### Ticket 4: Local JSON Storage
+### Ticket 4: Local JSON Development Fallback
 
 Status: Done
 
 Description:
 
-Support local development storage through `data/bookings.json`.
+Support local development fallback through `data/bookings.json` when Google Calendar is not configured.
 
 Acceptance Criteria:
 
-- Bookings are saved locally when Supabase is not configured.
+- Bookings are saved locally only during development fallback.
 - Duplicate start times are rejected.
 - Existing bookings update availability.
 
-### Ticket 5: Optional Google Calendar Sync
+### Ticket 5: Google Calendar Source Of Truth
 
 Status: Done
 
 Description:
 
-Attempt server-side Google Calendar event creation after a booking is saved.
+Use server-side Google Calendar busy reads and event creation for production booking.
 
 Acceptance Criteria:
 
 - Uses service account env vars.
 - Clients do not need Google login.
-- Missing env vars return skipped status.
-- Booking still succeeds if sync is skipped or failed.
+- Missing env vars disable production booking with a configuration message.
+- Busy slots are disabled from Google Calendar data.
 
-### Ticket 6: Optional Supabase Storage
+### Ticket 6: Optional Future Supabase Storage
 
 Status: Done
 
 Description:
 
-Use Supabase `bookings` table for production storage when configured.
+Keep Supabase table guidance available for possible future reporting or backup storage.
 
 Acceptance Criteria:
 
 - Supabase client is server-side only.
 - Service role key is not exposed to frontend.
-- Missing env vars fall back to local JSON.
-- Duplicate `start_time` bookings are prevented.
+- Current production booking does not require Supabase.
 
 ## Suggested Next Tickets
 
@@ -161,4 +160,3 @@ Possible work:
 - CAPTCHA if spam appears.
 - structured logging.
 - better error monitoring.
-

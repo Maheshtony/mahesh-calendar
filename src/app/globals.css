@@ -19,6 +19,10 @@ body {
   margin: 0;
   background: #f6f9fb;
   color: #152033;
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
 }
 
 button,
@@ -30,19 +34,24 @@ select {
 
 .fc {
   height: 100%;
-  --fc-border-color: #d9e5ec;
-  --fc-today-bg-color: #e7f5f7;
-  --fc-event-bg-color: #1d7a8c;
-  --fc-event-border-color: #1d7a8c;
+  --fc-border-color: #e2e8f0;
+  --fc-page-bg-color: #ffffff;
+  --fc-neutral-bg-color: #f8fafc;
+  --fc-today-bg-color: #f0f9fb;
+  --fc-event-bg-color: transparent;
+  --fc-event-border-color: transparent;
+  --fc-event-text-color: #334155;
 }
 
 .fc .fc-toolbar {
-  gap: 12px;
+  gap: 16px;
   flex-wrap: wrap;
+  padding: 16px 18px;
+  margin-bottom: 0;
 }
 
 .fc .fc-toolbar-title {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 800;
   color: #152033;
 }
@@ -50,15 +59,104 @@ select {
 .fc .fc-button {
   border-radius: 6px;
   border: 0;
-  background: #1d7a8c;
+  background: #247889;
   font-weight: 700;
+  box-shadow: none;
+  text-transform: none;
+}
+
+.fc .fc-button:hover,
+.fc .fc-button:focus {
+  background: #1d6573;
 }
 
 .fc .fc-button:disabled {
   opacity: 0.55;
 }
 
+.fc .fc-col-header-cell {
+  background: #f8fafc;
+  padding: 10px 0;
+}
+
+.fc .fc-col-header-cell-cushion {
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.fc .fc-daygrid-day {
+  background: #ffffff;
+}
+
+.fc .fc-daygrid-day-frame {
+  padding: 6px;
+}
+
 .fc .fc-daygrid-day-number {
-  color: #203047;
+  color: #475569;
+  font-size: 0.86rem;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  color: #247889;
+}
+
+.fc .fc-daygrid-event {
+  margin: 2px 0;
+  border-radius: 4px;
+  border: 0;
+  box-shadow: none;
+}
+
+.fc .fc-event-main {
+  padding: 1px 3px;
+}
+
+.fc .available-slot {
+  background: transparent;
+  color: #475569;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.fc .available-slot:hover {
+  background: #f8fafc;
+}
+
+.fc .booked-slot {
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.fc .fc-daygrid-more-link {
+  color: #247889;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+@media (max-width: 720px) {
+  .fc .fc-toolbar {
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .fc .fc-toolbar-title {
+    font-size: 1.05rem;
+  }
+
+  .fc .fc-daygrid-day-frame {
+    padding: 3px;
+  }
+
+  .fc .available-slot,
+  .fc .booked-slot {
+    font-size: 0.68rem;
+  }
 }

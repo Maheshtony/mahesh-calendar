@@ -73,7 +73,7 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+      <div className="border-b border-slate-200 pb-4">
         <p className="text-sm font-bold text-slate-500">Selected slot</p>
         <p className="mt-1 text-base font-extrabold text-ink">
           {selectedSlot
@@ -92,7 +92,7 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
           placeholder="Your name"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-ocean focus:ring-2 focus:ring-ocean/20"
+          className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#247889] focus:ring-2 focus:ring-[#247889]/15"
         />
       </label>
 
@@ -104,7 +104,7 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
           placeholder="you@example.com"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-ocean focus:ring-2 focus:ring-ocean/20"
+          className="mt-2 w-full rounded-md border border-slate-200 px-3 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#247889] focus:ring-2 focus:ring-[#247889]/15"
         />
       </label>
 
@@ -115,7 +115,7 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
           placeholder="Anything Mahesh should know before the meeting"
           value={notes}
           onChange={(event) => setNotes(event.target.value)}
-          className="mt-2 w-full resize-none rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-ocean focus:ring-2 focus:ring-ocean/20"
+          className="mt-2 w-full resize-none rounded-md border border-slate-200 px-3 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#247889] focus:ring-2 focus:ring-[#247889]/15"
         />
       </label>
 
@@ -128,7 +128,7 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
       <button
         type="submit"
         disabled={!selectedSlot || isSubmitting}
-        className="w-full rounded-md bg-ocean px-4 py-3 font-extrabold text-white transition hover:bg-[#166474] disabled:cursor-not-allowed disabled:bg-slate-300"
+        className="w-full rounded-md bg-[#247889] px-4 py-3 font-extrabold text-white transition hover:bg-[#1d6573] disabled:cursor-not-allowed disabled:bg-slate-300"
       >
         {isSubmitting ? "Booking..." : "Confirm Booking"}
       </button>

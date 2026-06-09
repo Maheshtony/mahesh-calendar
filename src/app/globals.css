@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f6f9fb;
+  color: #152033;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.fc {
+  height: 100%;
+  --fc-border-color: #d9e5ec;
+  --fc-today-bg-color: #e7f5f7;
+  --fc-event-bg-color: #1d7a8c;
+  --fc-event-border-color: #1d7a8c;
+}
+
+.fc .fc-toolbar {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #152033;
+}
+
+.fc .fc-button {
+  border-radius: 6px;
+  border: 0;
+  background: #1d7a8c;
+  font-weight: 700;
+}
+
+.fc .fc-button:disabled {
+  opacity: 0.55;
+}
+
+.fc .fc-daygrid-day-number {
+  color: #203047;
+  font-weight: 700;
+}

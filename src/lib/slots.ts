@@ -96,6 +96,21 @@ export function formatTimeOnly(iso: string) {
   }).format(new Date(iso));
 }
 
+export function formatTimeOnlyInTimeZone(
+  iso: string,
+  timeZone: string,
+  timeZoneLabel?: string
+) {
+  const formatterTimeZone = getFormatterTimeZone(timeZone);
+  const time = new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: formatterTimeZone
+  }).format(new Date(iso));
+
+  return timeZoneLabel ? `${time} ${timeZoneLabel}` : time;
+}
+
 export function formatDateLabel(date: Date) {
   return format(date, "EEEE, MMMM d");
 }
@@ -115,46 +130,67 @@ export function generateSlotsFromBusyRanges(
   visitorTimezone: string
 ): Slot[] {
   const now = new Date();
+  const rangeStart = startOfDay(now);
+  const rangeEnd = addDays(rangeStart, DAYS_TO_SHOW);
+
+  return generateSlotsForRange(
+    busyRanges,
+    visitorTimezone,
+    rangeStart.toISOString(),
+    rangeEnd.toISOString()
+  );
+}
+
+export function generateSlotsForRange(
+  busyRanges: Array<{ start: string; end: string }>,
+  visitorTimezone: string,
+  rangeStartIso: string,
+  rangeEndIso: string
+): Slot[] {
+  const now = new Date();
+  const rangeEnd = new Date(rangeEndIso);
+  let cursor = new Date(rangeStartIso);
   const slots: Slot[] = [];
 
-  for (let dayOffset = 0; dayOffset < DAYS_TO_SHOW; dayOffset += 1) {
-    const day = addDays(startOfDay(now), dayOffset);
+  while (isBefore(cursor, rangeEnd)) {
+    const start = new Date(cursor);
+    const end = addMinutes(start, SLOT_MINUTES);
+    const startIso = start.toISOString();
+    const endIso = end.toISOString();
 
-    for (let hour = 0; hour < 24; hour += 1) {
-      for (const minute of [0, 30]) {
-        const start = new Date(day);
-        start.setHours(hour, minute, 0, 0);
-        const end = addMinutes(start, SLOT_MINUTES);
-        const startIso = start.toISOString();
+    if (isAfter(start, now) && !isAfter(end, rangeEnd)) {
+      const available = !busyRanges.some((busyRange) =>
+        slotsOverlap(startIso, endIso, busyRange.start, busyRange.end)
+      );
 
-        if (!isAfter(start, now)) {
-          continue;
-        }
-        const available = !busyRanges.some((busyRange) =>
-          slotsOverlap(startIso, end.toISOString(), busyRange.start, busyRange.end)
-        );
-
-        slots.push({
-          id: startIso,
-          start: startIso,
-          start_time: startIso,
-          end: end.toISOString(),
-          end_time: end.toISOString(),
-          localDisplayTime: formatSlotRangeInTimeZone(
-            startIso,
-            end.toISOString(),
-            visitorTimezone
-          ),
-          maheshDisplayTime: formatSlotRangeInTimeZone(
-            startIso,
-            end.toISOString(),
-            MAHESH_TIMEZONE,
-            MAHESH_TIMEZONE_LABEL
-          ),
-          available
-        });
-      }
+      slots.push({
+        id: startIso,
+        start: startIso,
+        start_time: startIso,
+        end: endIso,
+        end_time: endIso,
+        localDisplay: formatTimeOnlyInTimeZone(startIso, visitorTimezone),
+        maheshDisplay: formatTimeOnlyInTimeZone(
+          startIso,
+          MAHESH_TIMEZONE,
+          MAHESH_TIMEZONE_LABEL
+        ),
+        localDisplayTime: formatSlotRangeInTimeZone(
+          startIso,
+          endIso,
+          visitorTimezone
+        ),
+        maheshDisplayTime: formatSlotRangeInTimeZone(
+          startIso,
+          endIso,
+          MAHESH_TIMEZONE,
+          MAHESH_TIMEZONE_LABEL
+        ),
+        available
+      });
     }
+
+    cursor = end;
   }
 
   return slots;

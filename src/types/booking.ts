@@ -24,6 +24,8 @@ export type Slot = {
   end: string;
   start_time?: string;
   end_time?: string;
+  localDisplay?: string;
+  maheshDisplay?: string;
   localDisplayTime?: string;
   maheshDisplayTime?: string;
   available: boolean;

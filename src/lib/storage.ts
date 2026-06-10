@@ -155,6 +155,40 @@ export async function readBookings(): Promise<Booking[]> {
   return readLocalBookings();
 }
 
+export async function readBookingsInRange(
+  rangeStartIso: string,
+  rangeEndIso: string
+): Promise<Booking[]> {
+  const storageMode = getStorageMode();
+
+  if (storageMode === "supabase") {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase!
+      .from("bookings")
+      .select("*")
+      .gte("start_time", rangeStartIso)
+      .lt("start_time", rangeEndIso)
+      .order("start_time", { ascending: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return ((data || []) as BookingRow[]).map(rowToBooking);
+  }
+
+  if (storageMode === "not-configured") {
+    throw new Error(storageNotConfiguredMessage);
+  }
+
+  const bookings = await readLocalBookings();
+
+  return bookings.filter(
+    (booking) =>
+      booking.slotStart >= rangeStartIso && booking.slotStart < rangeEndIso
+  );
+}
+
 async function createLocalBooking(
   validatedDraft: ValidatedBookingDraft
 ): Promise<Booking> {

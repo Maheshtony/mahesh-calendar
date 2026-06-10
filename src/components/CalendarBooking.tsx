@@ -16,6 +16,19 @@ import {
 import { useBookingStore } from "@/store/booking-store";
 import type { Slot } from "@/types/booking";
 
+function getLocalDayRange(dateIso: string) {
+  const date = new Date(dateIso);
+  const rangeStart = new Date(date);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(rangeStart);
+  rangeEnd.setDate(rangeEnd.getDate() + 1);
+
+  return {
+    start: rangeStart.toISOString(),
+    end: rangeEnd.toISOString()
+  };
+}
+
 export function CalendarBooking() {
   const selectedDate = useBookingStore((state) => state.selectedDate);
   const selectedSlot = useBookingStore((state) => state.selectedSlot);
@@ -25,26 +38,51 @@ export function CalendarBooking() {
   const [isLoading, setIsLoading] = useState(true);
   const [timezone, setTimezone] = useState("Local timezone");
   const [availabilityMessage, setAvailabilityMessage] = useState("");
+  const [slotsError, setSlotsError] = useState("");
 
-  const refreshSlots = useCallback(async (visitorTimezone = timezone) => {
+  const refreshSlots = useCallback(async (
+    visitorTimezone: string,
+    dateIso: string
+  ) => {
     setIsLoading(true);
-    const response = await fetch(
-      `/api/slots?timezone=${encodeURIComponent(visitorTimezone)}`
-    );
-    const payload = (await response.json()) as {
-      message?: string;
-      slots?: Slot[];
-    };
-    setSlots(payload.slots || []);
-    setAvailabilityMessage(payload.message || "");
-    setIsLoading(false);
-  }, [timezone]);
+    setSlotsError("");
+
+    try {
+      const range = getLocalDayRange(dateIso);
+      const params = new URLSearchParams({
+        timezone: visitorTimezone,
+        start: range.start,
+        end: range.end
+      });
+      const response = await fetch(`/api/slots?${params.toString()}`);
+      const payload = (await response.json()) as {
+        message?: string;
+        slots?: Slot[];
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.message || "Unable to load slots.");
+      }
+
+      setSlots(payload.slots || []);
+      setAvailabilityMessage(payload.message || "");
+    } catch {
+      setSlots([]);
+      setAvailabilityMessage("");
+      setSlotsError("Unable to load slots. Please refresh the page.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const detectedTimezone = getVisitorTimezone();
     setTimezone(detectedTimezone);
-    void refreshSlots(detectedTimezone);
-  }, [refreshSlots]);
+  }, []);
+
+  useEffect(() => {
+    void refreshSlots(timezone, selectedDate);
+  }, [refreshSlots, selectedDate, timezone]);
 
   const slotsForSelectedDate = useMemo(
     () => getSlotsForDay(slots, new Date(selectedDate)),
@@ -150,6 +188,11 @@ export function CalendarBooking() {
               {availabilityMessage}
             </p>
           ) : null}
+          {slotsError ? (
+            <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-bold leading-6 text-red-700">
+              {slotsError}
+            </p>
+          ) : null}
         </section>
 
         <section className="rounded-lg border border-slate-200/80 bg-white p-5 shadow-sm">
@@ -157,6 +200,10 @@ export function CalendarBooking() {
           {isLoading ? (
             <p className="mt-4 rounded-md bg-slate-50 px-3 py-2 text-sm font-bold text-slate-500">
               Loading availability...
+            </p>
+          ) : slotsError ? (
+            <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+              {slotsError}
             </p>
           ) : slotsForSelectedDate.length ? (
             <div className="mt-4 grid max-h-[320px] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-2">
@@ -177,7 +224,7 @@ export function CalendarBooking() {
                           : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
                     }`}
                   >
-                    {formatTimeOnly(slot.start)}
+                    {slot.localDisplay || formatTimeOnly(slot.start)}
                   </button>
                 );
               })}
@@ -191,7 +238,7 @@ export function CalendarBooking() {
 
         <section className="rounded-lg border border-slate-200/80 bg-white p-5 shadow-sm">
           <h3 className="mb-4 text-lg font-black text-ink">Booking Details</h3>
-          <BookingForm onBooked={() => refreshSlots()} />
+          <BookingForm onBooked={() => refreshSlots(timezone, selectedDate)} />
         </section>
       </aside>
     </div>

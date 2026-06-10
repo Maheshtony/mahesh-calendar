@@ -9,6 +9,7 @@ import {
 import {
   MAHESH_TIMEZONE,
   MAHESH_TIMEZONE_LABEL,
+  formatDurationLabel,
   formatSlotRangeInTimeZone
 } from "@/lib/slots";
 import type { Booking, EmailDeliveryResult } from "@/types/booking";
@@ -68,12 +69,13 @@ export async function sendBookingConfirmationEmails(
   if (!config) {
     return {
       status: "skipped",
-      message: "Email confirmation skipped because email is not configured."
+      message: "Email confirmation is not enabled yet."
     };
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
   const times = bookingTimes(booking);
+  const duration = formatDurationLabel(booking.slotStart, booking.slotEnd);
   const cancelLink = getCancelLink(booking, appUrl);
   const googleCalendarLink = getGoogleCalendarUrl(
     booking,
@@ -92,6 +94,7 @@ export async function sendBookingConfirmationEmails(
           <h1>Your meeting with Mahesh is booked</h1>
           ${paragraph("Selected time", times.client)}
           ${paragraph("Mahesh IST time", times.mahesh)}
+          ${paragraph("Duration", duration)}
           ${paragraph("Notes", booking.notes || "None")}
           <p><a href="${escapeHtml(googleCalendarLink)}">Add to Google Calendar</a></p>
           <p><a href="${escapeHtml(icsLink)}">Download ICS calendar invite</a></p>
@@ -109,6 +112,7 @@ export async function sendBookingConfirmationEmails(
           ${paragraph("Notes", booking.notes || "None")}
           ${paragraph("Selected time", times.client)}
           ${paragraph("Mahesh IST time", times.mahesh)}
+          ${paragraph("Duration", duration)}
           <p><a href="${escapeHtml(cancelLink)}">Cancel/manage booking</a></p>
         `
       })
@@ -136,11 +140,12 @@ export async function sendCancellationEmails(
   if (!config) {
     return {
       status: "skipped",
-      message: "Cancellation email skipped because email is not configured."
+      message: "Cancellation email is not enabled yet."
     };
   }
 
   const times = bookingTimes(booking);
+  const duration = formatDurationLabel(booking.slotStart, booking.slotEnd);
 
   try {
     await Promise.all([
@@ -152,6 +157,7 @@ export async function sendCancellationEmails(
           <h1>Your booking has been cancelled</h1>
           ${paragraph("Cancelled meeting time", times.client)}
           ${paragraph("Mahesh IST time", times.mahesh)}
+          ${paragraph("Duration", duration)}
         `
       }),
       config.resend.emails.send({
@@ -164,6 +170,7 @@ export async function sendCancellationEmails(
           ${paragraph("Client email", booking.email)}
           ${paragraph("Cancelled meeting time", times.client)}
           ${paragraph("Mahesh IST time", times.mahesh)}
+          ${paragraph("Duration", duration)}
         `
       })
     ]);

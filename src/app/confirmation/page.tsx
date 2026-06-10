@@ -11,6 +11,7 @@ import {
 import {
   MAHESH_TIMEZONE,
   MAHESH_TIMEZONE_LABEL,
+  formatDurationLabel,
   formatSlotRangeInTimeZone,
   getVisitorTimezone
 } from "@/lib/slots";
@@ -115,6 +116,12 @@ function ConfirmationContent() {
                 </p>
                 <p className="mt-2 font-extrabold leading-6 text-ink">
                   {clientTimezone}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 md:col-span-3">
+                <p className="text-sm font-bold text-slate-500">Duration</p>
+                <p className="mt-2 font-extrabold leading-6 text-ink">
+                  {formatDurationLabel(booking.slotStart, booking.slotEnd)}
                 </p>
               </div>
             </div>

@@ -6,13 +6,30 @@ import {
   MAHESH_TIMEZONE,
   MAHESH_TIMEZONE_LABEL,
   formatSlotRangeInTimeZone,
-  getVisitorTimezone,
   isValidEmail
 } from "@/lib/slots";
 import { useBookingStore } from "@/store/booking-store";
-import type { Booking, EmailDeliveryResult } from "@/types/booking";
+import type {
+  Booking,
+  EmailDeliveryResult,
+  MeetingDurationMinutes
+} from "@/types/booking";
 
-export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
+function getSlotEnd(startIso: string, durationMinutes: MeetingDurationMinutes) {
+  return new Date(
+    new Date(startIso).getTime() + durationMinutes * 60000
+  ).toISOString();
+}
+
+export function BookingForm({
+  durationMinutes,
+  timezone,
+  onBooked
+}: {
+  durationMinutes: MeetingDurationMinutes;
+  timezone: string;
+  onBooked: () => Promise<void>;
+}) {
   const router = useRouter();
   const selectedSlot = useBookingStore((state) => state.selectedSlot);
   const setConfirmation = useBookingStore((state) => state.setConfirmation);
@@ -21,7 +38,9 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const visitorTimezone = getVisitorTimezone();
+  const selectedSlotEnd = selectedSlot
+    ? getSlotEnd(selectedSlot.start, durationMinutes)
+    : "";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,8 +70,8 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
       },
       body: JSON.stringify({
         slotStart: selectedSlot.start,
-        slotEnd: selectedSlot.end,
-        timezone: getVisitorTimezone(),
+        slotEnd: selectedSlotEnd,
+        timezone,
         name,
         email,
         notes
@@ -99,9 +118,17 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
               <p className="mt-1 text-base font-extrabold text-ink">
                 {formatSlotRangeInTimeZone(
                   selectedSlot.start,
-                  selectedSlot.end,
-                  visitorTimezone
+                  selectedSlotEnd,
+                  timezone
                 )}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                Duration:
+              </p>
+              <p className="mt-1 text-base font-extrabold text-ink">
+                {durationMinutes === 30 ? "30 minutes" : "1 hour"}
               </p>
             </div>
             <div>
@@ -111,7 +138,7 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
               <p className="mt-1 text-base font-extrabold text-ink">
                 {formatSlotRangeInTimeZone(
                   selectedSlot.start,
-                  selectedSlot.end,
+                  selectedSlotEnd,
                   MAHESH_TIMEZONE,
                   MAHESH_TIMEZONE_LABEL
                 )}

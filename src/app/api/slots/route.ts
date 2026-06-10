@@ -66,10 +66,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       source: storageMode,
-      message:
-        storageMode === "local-json"
-          ? "Local development fallback is active. Configure Supabase for production."
-          : "Availability is loaded from Supabase bookings.",
+      message: "Available slots update after each booking.",
       slots: generateSlotsForRange(
         busyRanges,
         visitorTimezone,

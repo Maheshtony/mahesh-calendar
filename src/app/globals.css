@@ -120,14 +120,13 @@ select {
   box-shadow: inset 0 0 0 2px #247889;
 }
 
-.fc .mahesh-booked-badge {
+.fc .mahesh-booked-dot {
   align-self: flex-start;
   border-radius: 999px;
-  background: #f1f5f9;
-  padding: 3px 7px;
-  color: #64748b;
-  font-size: 0.68rem;
-  font-weight: 800;
+  width: 7px;
+  height: 7px;
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px #f1f5f9;
 }
 
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
@@ -153,8 +152,8 @@ select {
     min-height: 44px;
   }
 
-  .fc .mahesh-booked-badge {
-    padding: 2px 5px;
-    font-size: 0.62rem;
+  .fc .mahesh-booked-dot {
+    width: 6px;
+    height: 6px;
   }
 }

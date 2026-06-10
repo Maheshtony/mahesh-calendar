@@ -3,7 +3,7 @@ import path from "path";
 import type { Booking, BookingDraft, CalendarSync } from "@/types/booking";
 import { getStorageMode } from "@/lib/env-validation";
 import { getSupabaseServerClient } from "@/lib/supabase";
-import { isValidEmail } from "./slots";
+import { isValidEmail, slotsOverlap } from "./slots";
 
 const bookingsFile = path.join(process.cwd(), "data", "bookings.json");
 const storageNotConfiguredMessage =
@@ -69,6 +69,8 @@ export function validateBookingDraft(draft: BookingDraft): ValidatedBookingDraft
   const name = draft.name.trim();
   const email = draft.email.trim();
   const timezone = draft.timezone.trim();
+  const startTime = Date.parse(draft.slotStart);
+  const endTime = Date.parse(draft.slotEnd);
 
   if (!name) {
     throw new Error("Name is required.");
@@ -82,10 +84,17 @@ export function validateBookingDraft(draft: BookingDraft): ValidatedBookingDraft
     throw new Error("Select an available time slot.");
   }
 
-  if (
-    Number.isNaN(Date.parse(draft.slotStart)) ||
-    Date.parse(draft.slotStart) <= Date.now()
-  ) {
+  if (Number.isNaN(startTime) || Number.isNaN(endTime) || endTime <= startTime) {
+    throw new Error("Select an available time slot.");
+  }
+
+  const durationMinutes = (endTime - startTime) / 60000;
+
+  if (![30, 60].includes(durationMinutes)) {
+    throw new Error("Select a 30-minute or 1-hour meeting duration.");
+  }
+
+  if (startTime <= Date.now()) {
     throw new Error("Select a future time slot.");
   }
 
@@ -211,11 +220,16 @@ async function createLocalBooking(
   const slotTaken = bookings.some(
     (booking) =>
       isConfirmedBooking(booking) &&
-      booking.slotStart === validatedDraft.slotStart
+      slotsOverlap(
+        booking.slotStart,
+        booking.slotEnd,
+        validatedDraft.slotStart,
+        validatedDraft.slotEnd
+      )
   );
 
   if (slotTaken) {
-    throw new Error("This slot has already been booked.");
+    throw new Error("This time is already booked. Please choose another slot.");
   }
 
   const booking: Booking = {
@@ -243,19 +257,20 @@ export async function createBooking(draft: BookingDraft): Promise<Booking> {
 
   if (storageMode === "supabase") {
     const supabase = getSupabaseServerClient();
-    const { data: existingBooking, error: lookupError } = await supabase!
+    const { data: existingBookings, error: lookupError } = await supabase!
       .from("bookings")
       .select("id")
-      .eq("start_time", validatedDraft.slotStart)
       .eq("status", "confirmed")
-      .maybeSingle();
+      .lt("start_time", validatedDraft.slotEnd)
+      .gt("end_time", validatedDraft.slotStart)
+      .limit(1);
 
     if (lookupError) {
       throw new Error(lookupError.message);
     }
 
-    if (existingBooking) {
-      throw new Error("This time slot was just booked. Please choose another time.");
+    if (existingBookings?.length) {
+      throw new Error("This time is already booked. Please choose another slot.");
     }
 
     const { data, error } = await supabase!
@@ -277,7 +292,7 @@ export async function createBooking(draft: BookingDraft): Promise<Booking> {
 
     if (error) {
       if (error.code === "23505") {
-        throw new Error("This time slot was just booked. Please choose another time.");
+        throw new Error("This time is already booked. Please choose another slot.");
       }
 
       throw new Error(error.message);

@@ -43,6 +43,8 @@ export type BookingDraft = {
   notes: string;
 };
 
+export type MeetingDurationMinutes = 30 | 60;
+
 export type EmailDeliveryStatus = "sent" | "skipped" | "failed";
 
 export type EmailDeliveryResult = {

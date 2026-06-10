@@ -115,6 +115,14 @@ export function formatDateLabel(date: Date) {
   return format(date, "EEEE, MMMM d");
 }
 
+export function formatDurationLabel(startIso: string, endIso: string) {
+  const minutes = Math.round(
+    (new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000
+  );
+
+  return minutes === 60 ? "1 hour" : `${minutes} minutes`;
+}
+
 export function generateSlots(bookings: Booking[]): Slot[] {
   return generateSlotsFromBusyRanges(
     bookings.map((booking) => ({

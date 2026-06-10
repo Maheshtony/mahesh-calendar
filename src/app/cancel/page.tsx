@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import {
   MAHESH_TIMEZONE,
   MAHESH_TIMEZONE_LABEL,
+  formatDurationLabel,
   formatSlotRangeInTimeZone,
   getVisitorTimezone
 } from "@/lib/slots";
@@ -157,6 +158,9 @@ function CancelContent() {
             </div>
             <p className="rounded-md bg-[#eef8fa] p-4 text-sm font-bold leading-6 text-ocean">
               Booking for {booking.name} ({booking.email})
+            </p>
+            <p className="rounded-md bg-slate-50 p-4 text-sm font-bold leading-6 text-slate-700">
+              Duration: {formatDurationLabel(booking.slotStart, booking.slotEnd)}
             </p>
 
             {message ? (

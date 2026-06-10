@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatDurationLabel } from "@/lib/slots";
 import { findBooking } from "@/lib/storage";
 import type { Booking } from "@/types/booking";
 
@@ -21,7 +22,8 @@ function createDescription(booking: Booking) {
     `Client name: ${booking.name}`,
     `Client email: ${booking.email}`,
     `Notes: ${booking.notes || "None"}`,
-    `Visitor timezone: ${booking.timezone}`
+    `Visitor timezone: ${booking.timezone}`,
+    `Duration: ${formatDurationLabel(booking.slotStart, booking.slotEnd)}`
   ].join("\n");
 }
 

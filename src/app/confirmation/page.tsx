@@ -10,34 +10,52 @@ import {
   getVisitorTimezone
 } from "@/lib/slots";
 import { useBookingStore } from "@/store/booking-store";
-import type { Booking, CalendarSync } from "@/types/booking";
+import type { Booking } from "@/types/booking";
 
-function getCalendarSyncLabel(calendarSync?: CalendarSync) {
-  if (!calendarSync) {
-    return {
-      label: "Google Calendar sync: skipped because not configured",
-      className: "bg-slate-50 text-slate-700"
-    };
+function formatGoogleCalendarDate(iso: string) {
+  return new Date(iso).toISOString().replace(/[-:]/g, "").replace(".000", "");
+}
+
+function getAppUrl() {
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+  if (configuredUrl) {
+    return configuredUrl.replace(/\/$/, "");
   }
 
-  if (calendarSync.status === "created") {
-    return {
-      label: "Google Calendar sync: configured and created",
-      className: "bg-emerald-50 text-emerald-700"
-    };
+  if (typeof window !== "undefined") {
+    return window.location.origin;
   }
 
-  if (calendarSync.status === "failed") {
-    return {
-      label: "Google Calendar sync: failed",
-      className: "bg-red-50 text-red-700"
-    };
-  }
+  return "";
+}
 
-  return {
-    label: "Google Calendar sync: skipped because not configured",
-    className: "bg-slate-50 text-slate-700"
-  };
+function getBookingLink(bookingId: string) {
+  const appUrl = getAppUrl();
+
+  return `${appUrl}/confirmation?id=${encodeURIComponent(bookingId)}`;
+}
+
+function getGoogleCalendarUrl(booking: Booking, clientTimezone: string) {
+  const bookingLink = getBookingLink(booking.id);
+  const details = [
+    `Client name: ${booking.name}`,
+    `Client email: ${booking.email}`,
+    `Notes: ${booking.notes || "None"}`,
+    `Visitor timezone: ${clientTimezone}`,
+    `Mahesh Calendar booking link: ${bookingLink}`
+  ].join("\n");
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: "Meeting with Mahesh",
+    dates: `${formatGoogleCalendarDate(
+      booking.slotStart
+    )}/${formatGoogleCalendarDate(booking.slotEnd)}`,
+    details,
+    ctz: clientTimezone
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 function ConfirmationContent() {
@@ -45,7 +63,6 @@ function ConfirmationContent() {
   const confirmation = useBookingStore((state) => state.confirmation);
   const [booking, setBooking] = useState<Booking | null>(confirmation);
   const [timezone, setTimezone] = useState("Local timezone");
-  const calendarSyncLabel = getCalendarSyncLabel(booking?.calendarSync);
   const clientTimezone = booking?.timezone || timezone;
 
   useEffect(() => {
@@ -109,12 +126,25 @@ function ConfirmationContent() {
               Timezone handled automatically. Book in your local time; Mahesh
               will see the correct time in IST.
             </p>
-            <p
-              className={`rounded-md p-4 text-sm font-bold ${calendarSyncLabel.className}`}
-            >
-              {calendarSyncLabel.label}
+            <p className="rounded-md bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
+              Booking saved successfully.
             </p>
-            <p>A confirmation can be sent to {booking.email}.</p>
+            <div className="grid gap-3 pt-2 sm:grid-cols-2">
+              <a
+                href={getGoogleCalendarUrl(booking, clientTimezone)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex justify-center rounded-md bg-ocean px-5 py-3 text-center font-bold text-white transition hover:bg-[#166474]"
+              >
+                Add to Google Calendar
+              </a>
+              <a
+                href={`/api/bookings/${booking.id}/ics`}
+                className="inline-flex justify-center rounded-md border border-slate-200 bg-white px-5 py-3 text-center font-bold text-ink transition hover:border-ocean hover:bg-[#f7fbfc]"
+              >
+                Download Calendar Invite
+              </a>
+            </div>
           </div>
         ) : (
           <p className="mt-6 text-slate-700">
@@ -122,12 +152,14 @@ function ConfirmationContent() {
             more available times.
           </p>
         )}
-        <Link
-          href="/calendar"
-          className="mt-8 inline-flex rounded-md bg-ocean px-5 py-3 font-bold text-white transition hover:bg-[#166474]"
-        >
-          Back to Calendar
-        </Link>
+        <div className="mt-8">
+          <Link
+            href="/calendar"
+            className="inline-flex rounded-md border border-slate-200 bg-white px-5 py-3 font-bold text-ink transition hover:border-ocean hover:bg-[#f7fbfc]"
+          >
+            Back to Calendar
+          </Link>
+        </div>
       </section>
     </main>
   );

@@ -5,7 +5,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { DateClickArg } from "@fullcalendar/interaction";
-import type { EventContentArg } from "@fullcalendar/core";
+import type { DayCellContentArg } from "@fullcalendar/core";
 import { BookingForm } from "@/components/BookingForm";
 import {
   formatDateLabel,
@@ -15,6 +15,29 @@ import {
 } from "@/lib/slots";
 import { useBookingStore } from "@/store/booking-store";
 import type { Slot } from "@/types/booking";
+
+const timeGroups = [
+  {
+    key: "morning",
+    label: "Morning",
+    range: "6:00 AM - 11:30 AM"
+  },
+  {
+    key: "afternoon",
+    label: "Afternoon",
+    range: "12:00 PM - 4:30 PM"
+  },
+  {
+    key: "evening",
+    label: "Evening",
+    range: "5:00 PM - 8:30 PM"
+  },
+  {
+    key: "night",
+    label: "Night",
+    range: "9:00 PM - 5:30 AM"
+  }
+] as const;
 
 function getLocalDayRange(dateIso: string) {
   const date = new Date(dateIso);
@@ -27,6 +50,24 @@ function getLocalDayRange(dateIso: string) {
     start: rangeStart.toISOString(),
     end: rangeEnd.toISOString()
   };
+}
+
+function getSlotGroup(slot: Slot) {
+  const hour = new Date(slot.start).getHours();
+
+  if (hour >= 6 && hour < 12) {
+    return "morning";
+  }
+
+  if (hour >= 12 && hour < 17) {
+    return "afternoon";
+  }
+
+  if (hour >= 17 && hour < 21) {
+    return "evening";
+  }
+
+  return "night";
 }
 
 export function CalendarBooking() {
@@ -89,21 +130,18 @@ export function CalendarBooking() {
     [selectedDate, slots]
   );
 
-  const events = useMemo(
+  const groupedSlots = useMemo(
     () =>
-      slots.map((slot) => ({
-        id: slot.id,
-        start: slot.start,
-        end: slot.end,
-        title: slot.available ? "" : "Booked",
-        display: "block",
-        classNames: [slot.available ? "available-slot" : "booked-slot"],
-        extendedProps: {
-          available: slot.available
-        }
+      timeGroups.map((group) => ({
+        ...group,
+        slots: slotsForSelectedDate.filter(
+          (slot) => getSlotGroup(slot) === group.key
+        )
       })),
-    [slots]
+    [slotsForSelectedDate]
   );
+  const hasBookedSlots = slotsForSelectedDate.some((slot) => !slot.available);
+  const selectedDateObject = new Date(selectedDate);
 
   function handleDateClick(info: DateClickArg) {
     setSelectedDate(info.date.toISOString());
@@ -118,12 +156,17 @@ export function CalendarBooking() {
     setSelectedSlot(slot);
   }
 
-  function renderEventContent(eventInfo: EventContentArg) {
+  function renderDayCellContent(dayInfo: DayCellContentArg) {
+    const isSelected =
+      dayInfo.date.toDateString() === selectedDateObject.toDateString();
+
     return (
-      <span>
-        {eventInfo.timeText}
-        {eventInfo.event.extendedProps.available ? "" : " Booked"}
-      </span>
+      <div className="mahesh-day-cell">
+        <span>{dayInfo.dayNumberText}</span>
+        {isSelected && hasBookedSlots ? (
+          <span className="mahesh-booked-badge">Booked</span>
+        ) : null}
+      </div>
     );
   }
 
@@ -151,20 +194,19 @@ export function CalendarBooking() {
           </div>
         </div>
 
-        <div className="h-[620px] overflow-hidden rounded-lg border border-slate-200/80 lg:h-[calc(100vh-210px)] lg:min-h-[560px]">
+        <div className="h-[520px] overflow-hidden rounded-lg border border-slate-200/80 lg:h-[calc(100vh-210px)] lg:min-h-[520px]">
           <FullCalendar
             plugins={[dayGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"
             height="100%"
             expandRows
             dateClick={handleDateClick}
-            events={events}
-            eventContent={renderEventContent}
-            eventTimeFormat={{
-              hour: "numeric",
-              minute: "2-digit",
-              meridiem: "short"
-            }}
+            dayCellContent={renderDayCellContent}
+            dayCellClassNames={(dayInfo) =>
+              dayInfo.date.toDateString() === selectedDateObject.toDateString()
+                ? ["mahesh-selected-day"]
+                : []
+            }
             headerToolbar={{
               left: "prev,next today",
               center: "title",
@@ -206,28 +248,44 @@ export function CalendarBooking() {
               {slotsError}
             </p>
           ) : slotsForSelectedDate.length ? (
-            <div className="mt-4 grid max-h-[320px] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-2">
-              {slotsForSelectedDate.map((slot) => {
-                const isSelected = selectedSlot?.id === slot.id;
+            <div className="mt-4 max-h-[420px] space-y-5 overflow-y-auto pr-1">
+              {groupedSlots.map((group) =>
+                group.slots.length ? (
+                  <div key={group.key}>
+                    <div className="mb-2 flex items-baseline justify-between gap-3">
+                      <h4 className="text-sm font-black text-ink">
+                        {group.label}
+                      </h4>
+                      <p className="text-xs font-bold text-slate-500">
+                        {group.range}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
+                      {group.slots.map((slot) => {
+                        const isSelected = selectedSlot?.id === slot.id;
 
-                return (
-                  <button
-                    key={slot.id}
-                    type="button"
-                    disabled={!slot.available}
-                    onClick={() => chooseSlot(slot)}
-                    className={`rounded-md border px-3 py-2.5 text-sm font-bold transition ${
-                      isSelected
-                        ? "border-[#247889] bg-[#247889] text-white shadow-sm"
-                        : slot.available
-                          ? "border-slate-200 bg-white text-slate-800 hover:border-[#247889] hover:bg-[#f7fbfc]"
-                          : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                    }`}
-                  >
-                    {slot.localDisplay || formatTimeOnly(slot.start)}
-                  </button>
-                );
-              })}
+                        return (
+                          <button
+                            key={slot.id}
+                            type="button"
+                            disabled={!slot.available}
+                            onClick={() => chooseSlot(slot)}
+                            className={`rounded-md border px-3 py-2.5 text-sm font-bold shadow-sm transition ${
+                              isSelected
+                                ? "border-[#247889] bg-[#247889] text-white"
+                                : slot.available
+                                  ? "border-slate-200 bg-white text-slate-800 hover:border-[#247889] hover:bg-[#f7fbfc]"
+                                  : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 shadow-none"
+                            }`}
+                          >
+                            {slot.localDisplay || formatTimeOnly(slot.start)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null
+              )}
             </div>
           ) : (
             <p className="mt-4 rounded-md bg-slate-50 px-3 py-2 text-sm font-bold text-slate-500">

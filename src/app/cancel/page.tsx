@@ -11,6 +11,18 @@ import {
 } from "@/lib/slots";
 import type { Booking, EmailDeliveryResult } from "@/types/booking";
 
+function getCancellationEmailMessage(emailStatus: EmailDeliveryResult | null) {
+  if (!emailStatus) {
+    return "";
+  }
+
+  if (emailStatus.status === "skipped") {
+    return "Cancellation email is not enabled yet.";
+  }
+
+  return emailStatus.message;
+}
+
 function CancelContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
@@ -25,6 +37,8 @@ function CancelContent() {
     null
   );
   const clientTimezone = booking?.timezone || timezone;
+  const isCancelled = booking?.status === "cancelled";
+  const emailMessage = getCancellationEmailMessage(emailStatus);
 
   useEffect(() => {
     setTimezone(getVisitorTimezone());
@@ -84,24 +98,41 @@ function CancelContent() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-mist p-6">
-      <section className="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-8 shadow-xl">
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-ocean">
-          Cancel booking
-        </p>
-        <h1 className="mt-3 text-4xl font-black text-ink">Mahesh Calendar</h1>
+    <main className="flex min-h-screen items-center justify-center bg-[#f8f6f2] p-4 md:p-6">
+      <section className="w-full max-w-2xl rounded-lg border border-amber-100 bg-white p-5 shadow-xl md:p-8">
 
         {isLoading ? (
           <p className="mt-6 text-slate-700">Loading booking...</p>
         ) : booking ? (
-          <div className="mt-6 space-y-4 text-slate-700">
-            <p>
-              Review your booking below, then confirm cancellation if you no
-              longer need this meeting.
-            </p>
-            <div className="rounded-md bg-slate-50 p-4">
+          <div className="space-y-5 text-slate-700">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl font-black ${
+                  isCancelled
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                {isCancelled ? "!" : "?"}
+              </div>
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-amber-700">
+                  Mahesh Calendar
+                </p>
+                <h1 className="mt-2 text-3xl font-black text-ink md:text-4xl">
+                  {isCancelled ? "Booking Cancelled" : "Cancel Booking"}
+                </h1>
+                <p className="mt-3 text-base leading-7 text-slate-600">
+                  {isCancelled
+                    ? "Your booking has been cancelled. This time slot is now available again."
+                    : "Review your booking before cancelling."}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-bold text-slate-500">
-                Your selected time:
+                Your selected time
               </p>
               <p className="mt-1 font-extrabold text-ink">
                 {formatSlotRangeInTimeZone(
@@ -111,9 +142,9 @@ function CancelContent() {
                 )}
               </p>
             </div>
-            <div className="rounded-md bg-slate-50 p-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-bold text-slate-500">
-                Mahesh calendar time:
+                Mahesh calendar time
               </p>
               <p className="mt-1 font-extrabold text-ink">
                 {formatSlotRangeInTimeZone(
@@ -129,13 +160,13 @@ function CancelContent() {
             </p>
 
             {message ? (
-              <p className="rounded-md bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
+              <p className="rounded-md bg-amber-50 p-4 text-sm font-bold text-amber-800">
                 {message}
               </p>
             ) : null}
-            {emailStatus ? (
-              <p className="rounded-md bg-slate-50 p-4 text-sm font-bold text-slate-700">
-                {emailStatus.message}
+            {emailMessage ? (
+              <p className="rounded-md bg-slate-50 p-3 text-sm font-bold text-slate-500">
+                {emailMessage}
               </p>
             ) : null}
             {error ? (
@@ -145,16 +176,16 @@ function CancelContent() {
             ) : null}
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={
-                  isCancelling || booking.status === "cancelled" || !token
-                }
-                className="inline-flex justify-center rounded-md bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                {isCancelling ? "Cancelling..." : "Cancel Booking"}
-              </button>
+              {!isCancelled ? (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={isCancelling || !token}
+                  className="inline-flex justify-center rounded-md bg-amber-700 px-5 py-3 font-bold text-white transition hover:bg-amber-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  {isCancelling ? "Cancelling..." : "Confirm Cancellation"}
+                </button>
+              ) : null}
               <Link
                 href="/calendar"
                 className="inline-flex justify-center rounded-md border border-slate-200 bg-white px-5 py-3 font-bold text-ink transition hover:border-ocean hover:bg-[#f7fbfc]"

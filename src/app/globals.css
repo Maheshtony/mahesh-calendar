@@ -38,9 +38,6 @@ select {
   --fc-page-bg-color: #ffffff;
   --fc-neutral-bg-color: #f8fafc;
   --fc-today-bg-color: #f0f9fb;
-  --fc-event-bg-color: transparent;
-  --fc-event-border-color: transparent;
-  --fc-event-text-color: #334155;
 }
 
 .fc .fc-toolbar {
@@ -88,57 +85,53 @@ select {
 
 .fc .fc-daygrid-day {
   background: #ffffff;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.fc .fc-daygrid-day:hover {
+  background: #f8fafc;
 }
 
 .fc .fc-daygrid-day-frame {
-  padding: 6px;
+  min-height: 82px;
+  padding: 8px;
 }
 
 .fc .fc-daygrid-day-number {
+  width: 100%;
   color: #475569;
   font-size: 0.86rem;
   font-weight: 700;
   text-decoration: none;
 }
 
+.fc .mahesh-day-cell {
+  display: flex;
+  min-height: 64px;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fc .mahesh-selected-day {
+  background: #eef8fa;
+  box-shadow: inset 0 0 0 2px #247889;
+}
+
+.fc .mahesh-booked-badge {
+  align-self: flex-start;
+  border-radius: 999px;
+  background: #f1f5f9;
+  padding: 3px 7px;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
   color: #247889;
-}
-
-.fc .fc-daygrid-event {
-  margin: 2px 0;
-  border-radius: 4px;
-  border: 0;
-  box-shadow: none;
-}
-
-.fc .fc-event-main {
-  padding: 1px 3px;
-}
-
-.fc .available-slot {
-  background: transparent;
-  color: #475569;
-  font-size: 0.74rem;
-  font-weight: 700;
-}
-
-.fc .available-slot:hover {
-  background: #f8fafc;
-}
-
-.fc .booked-slot {
-  background: #f1f5f9;
-  color: #64748b;
-  font-size: 0.74rem;
-  font-weight: 700;
-}
-
-.fc .fc-daygrid-more-link {
-  color: #247889;
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-decoration: none;
 }
 
 @media (max-width: 720px) {
@@ -152,11 +145,16 @@ select {
   }
 
   .fc .fc-daygrid-day-frame {
-    padding: 3px;
+    min-height: 56px;
+    padding: 5px;
   }
 
-  .fc .available-slot,
-  .fc .booked-slot {
-    font-size: 0.68rem;
+  .fc .mahesh-day-cell {
+    min-height: 44px;
+  }
+
+  .fc .mahesh-booked-badge {
+    padding: 2px 5px;
+    font-size: 0.62rem;
   }
 }

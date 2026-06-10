@@ -33,16 +33,35 @@ export function getGoogleCalendarEnvStatus() {
   ]);
 }
 
+export function getSupabaseEnvPresence() {
+  return {
+    supabaseUrlPresent: hasValue(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    supabaseServiceKeyPresent: hasValue(process.env.SUPABASE_SERVICE_ROLE_KEY)
+  };
+}
+
 export function getSupabaseEnvStatus() {
-  return validateEnvVars([
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "SUPABASE_SERVICE_ROLE_KEY"
-  ]);
+  const { supabaseUrlPresent, supabaseServiceKeyPresent } =
+    getSupabaseEnvPresence();
+  const missing: EnvVarName[] = [];
+
+  if (!supabaseUrlPresent) {
+    missing.push("NEXT_PUBLIC_SUPABASE_URL");
+  }
+
+  if (!supabaseServiceKeyPresent) {
+    missing.push("SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  return {
+    configured: missing.length === 0,
+    missing
+  };
 }
 
 export function getStorageMode() {
-  if (getGoogleCalendarEnvStatus().configured) {
-    return "google-calendar";
+  if (getSupabaseEnvStatus().configured) {
+    return "supabase";
   }
 
   return isProduction() ? "not-configured" : "local-json";

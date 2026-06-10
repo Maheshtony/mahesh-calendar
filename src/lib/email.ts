@@ -16,13 +16,33 @@ import type { Booking, EmailDeliveryResult } from "@/types/booking";
 
 const defaultMaheshEmail = "rudrapatimahesh@gmail.com";
 
+export function getEmailEnvStatus() {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.EMAIL_FROM?.trim();
+  const missing: string[] = [];
+
+  if (!apiKey) {
+    missing.push("RESEND_API_KEY");
+  }
+
+  if (!from) {
+    missing.push("EMAIL_FROM");
+  }
+
+  return {
+    configured: missing.length === 0,
+    missing
+  };
+}
+
 function getEmailConfig() {
+  const status = getEmailEnvStatus();
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.EMAIL_FROM?.trim();
   const maheshEmail =
     process.env.MAHESH_NOTIFY_EMAIL?.trim() || defaultMaheshEmail;
 
-  if (!apiKey || !from) {
+  if (!status.configured || !apiKey || !from) {
     return null;
   }
 
@@ -92,6 +112,8 @@ export async function sendBookingConfirmationEmails(
         subject: "Your meeting with Mahesh is booked",
         html: `
           <h1>Your meeting with Mahesh is booked</h1>
+          ${paragraph("Client name", booking.name)}
+          ${paragraph("Client email", booking.email)}
           ${paragraph("Selected time", times.client)}
           ${paragraph("Mahesh IST time", times.mahesh)}
           ${paragraph("Duration", duration)}
@@ -155,6 +177,8 @@ export async function sendCancellationEmails(
         subject: "Your meeting with Mahesh was cancelled",
         html: `
           <h1>Your booking has been cancelled</h1>
+          ${paragraph("Client name", booking.name)}
+          ${paragraph("Client email", booking.email)}
           ${paragraph("Cancelled meeting time", times.client)}
           ${paragraph("Mahesh IST time", times.mahesh)}
           ${paragraph("Duration", duration)}
@@ -185,6 +209,38 @@ export async function sendCancellationEmails(
     return {
       status: "failed",
       message: "Cancellation email could not be sent."
+    };
+  }
+}
+
+export async function sendEmailTest(): Promise<EmailDeliveryResult> {
+  const config = getEmailConfig();
+
+  if (!config) {
+    return {
+      status: "skipped",
+      message: "Email confirmation is not enabled yet."
+    };
+  }
+
+  try {
+    await config.resend.emails.send({
+      from: config.from,
+      to: config.maheshEmail,
+      subject: "Mahesh Calendar email test",
+      html: "<p>Email delivery is working.</p>"
+    });
+
+    return {
+      status: "sent",
+      message: "Email test sent."
+    };
+  } catch (error) {
+    console.error("[email] Test email failed", error);
+
+    return {
+      status: "failed",
+      message: "Email test could not be sent."
     };
   }
 }

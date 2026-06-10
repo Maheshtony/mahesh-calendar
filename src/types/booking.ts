@@ -14,6 +14,9 @@ export type Booking = {
   name: string;
   email: string;
   notes: string;
+  status: "confirmed" | "cancelled";
+  cancelledAt?: string;
+  cancelToken?: string;
   calendarSync?: CalendarSync;
   createdAt: string;
 };
@@ -38,4 +41,11 @@ export type BookingDraft = {
   name: string;
   email: string;
   notes: string;
+};
+
+export type EmailDeliveryStatus = "sent" | "skipped" | "failed";
+
+export type EmailDeliveryResult = {
+  status: EmailDeliveryStatus;
+  message: string;
 };

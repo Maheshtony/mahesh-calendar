@@ -4,6 +4,11 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
+  getAppUrl,
+  getCancelLink,
+  getGoogleCalendarUrl
+} from "@/lib/calendar-links";
+import {
   MAHESH_TIMEZONE,
   MAHESH_TIMEZONE_LABEL,
   formatSlotRangeInTimeZone,
@@ -12,50 +17,20 @@ import {
 import { useBookingStore } from "@/store/booking-store";
 import type { Booking } from "@/types/booking";
 
-function formatGoogleCalendarDate(iso: string) {
-  return new Date(iso).toISOString().replace(/[-:]/g, "").replace(".000", "");
-}
-
-function getAppUrl() {
-  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-  if (configuredUrl) {
-    return configuredUrl.replace(/\/$/, "");
+function getEmailStatusMessage(status: string | null) {
+  if (status === "sent") {
+    return "Email confirmation sent.";
   }
 
-  if (typeof window !== "undefined") {
-    return window.location.origin;
+  if (status === "failed") {
+    return "Email confirmation could not be sent.";
+  }
+
+  if (status === "skipped") {
+    return "Email confirmation skipped because email is not configured.";
   }
 
   return "";
-}
-
-function getBookingLink(bookingId: string) {
-  const appUrl = getAppUrl();
-
-  return `${appUrl}/confirmation?id=${encodeURIComponent(bookingId)}`;
-}
-
-function getGoogleCalendarUrl(booking: Booking, clientTimezone: string) {
-  const bookingLink = getBookingLink(booking.id);
-  const details = [
-    `Client name: ${booking.name}`,
-    `Client email: ${booking.email}`,
-    `Notes: ${booking.notes || "None"}`,
-    `Visitor timezone: ${clientTimezone}`,
-    `Mahesh Calendar booking link: ${bookingLink}`
-  ].join("\n");
-  const params = new URLSearchParams({
-    action: "TEMPLATE",
-    text: "Meeting with Mahesh",
-    dates: `${formatGoogleCalendarDate(
-      booking.slotStart
-    )}/${formatGoogleCalendarDate(booking.slotEnd)}`,
-    details,
-    ctz: clientTimezone
-  });
-
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 function ConfirmationContent() {
@@ -63,7 +38,12 @@ function ConfirmationContent() {
   const confirmation = useBookingStore((state) => state.confirmation);
   const [booking, setBooking] = useState<Booking | null>(confirmation);
   const [timezone, setTimezone] = useState("Local timezone");
+  const emailStatusMessage = getEmailStatusMessage(
+    searchParams.get("emailStatus")
+  );
   const clientTimezone = booking?.timezone || timezone;
+  const appUrl =
+    typeof window !== "undefined" ? getAppUrl(window.location.origin) : "";
 
   useEffect(() => {
     setTimezone(getVisitorTimezone());
@@ -129,9 +109,14 @@ function ConfirmationContent() {
             <p className="rounded-md bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
               Booking saved successfully.
             </p>
+            {emailStatusMessage ? (
+              <p className="rounded-md bg-slate-50 p-4 text-sm font-bold text-slate-700">
+                {emailStatusMessage}
+              </p>
+            ) : null}
             <div className="grid gap-3 pt-2 sm:grid-cols-2">
               <a
-                href={getGoogleCalendarUrl(booking, clientTimezone)}
+                href={getGoogleCalendarUrl(booking, clientTimezone, appUrl)}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex justify-center rounded-md bg-ocean px-5 py-3 text-center font-bold text-white transition hover:bg-[#166474]"
@@ -145,6 +130,19 @@ function ConfirmationContent() {
                 Download Calendar Invite
               </a>
             </div>
+            {booking.cancelToken ? (
+              <div className="rounded-md border border-slate-200 p-4">
+                <p className="text-sm font-bold text-slate-500">
+                  Need to cancel?
+                </p>
+                <a
+                  href={getCancelLink(booking, appUrl)}
+                  className="mt-3 inline-flex rounded-md border border-slate-200 bg-white px-5 py-3 font-bold text-ink transition hover:border-ocean hover:bg-[#f7fbfc]"
+                >
+                  Cancel Booking
+                </a>
+              </div>
+            ) : null}
           </div>
         ) : (
           <p className="mt-6 text-slate-700">

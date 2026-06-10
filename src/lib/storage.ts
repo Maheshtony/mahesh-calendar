@@ -18,6 +18,9 @@ type BookingRow = {
   end_time: string;
   timezone: string;
   created_at: string;
+  status?: "confirmed" | "cancelled";
+  cancelled_at?: string | null;
+  cancel_token?: string | null;
 };
 
 type ValidatedBookingDraft = {
@@ -29,6 +32,7 @@ type ValidatedBookingDraft = {
   email: string;
   notes: string;
   createdAt: string;
+  cancelToken: string;
 };
 
 async function ensureStorageFile() {
@@ -50,8 +54,15 @@ function rowToBooking(row: BookingRow): Booking {
     slotStart: row.start_time,
     slotEnd: row.end_time,
     timezone: row.timezone,
+    status: row.status || "confirmed",
+    cancelledAt: row.cancelled_at || undefined,
+    cancelToken: row.cancel_token || undefined,
     createdAt: row.created_at
   };
+}
+
+function isConfirmedBooking(booking: Booking) {
+  return (booking.status || "confirmed") === "confirmed";
 }
 
 export function validateBookingDraft(draft: BookingDraft): ValidatedBookingDraft {
@@ -86,7 +97,8 @@ export function validateBookingDraft(draft: BookingDraft): ValidatedBookingDraft
     email,
     notes: draft.notes.trim(),
     id: crypto.randomUUID(),
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    cancelToken: crypto.randomUUID()
   };
 }
 
@@ -166,6 +178,7 @@ export async function readBookingsInRange(
     const { data, error } = await supabase!
       .from("bookings")
       .select("*")
+      .eq("status", "confirmed")
       .gte("start_time", rangeStartIso)
       .lt("start_time", rangeEndIso)
       .order("start_time", { ascending: true });
@@ -185,7 +198,9 @@ export async function readBookingsInRange(
 
   return bookings.filter(
     (booking) =>
-      booking.slotStart >= rangeStartIso && booking.slotStart < rangeEndIso
+      isConfirmedBooking(booking) &&
+      booking.slotStart >= rangeStartIso &&
+      booking.slotStart < rangeEndIso
   );
 }
 
@@ -194,7 +209,9 @@ async function createLocalBooking(
 ): Promise<Booking> {
   const bookings = await readLocalBookings();
   const slotTaken = bookings.some(
-    (booking) => booking.slotStart === validatedDraft.slotStart
+    (booking) =>
+      isConfirmedBooking(booking) &&
+      booking.slotStart === validatedDraft.slotStart
   );
 
   if (slotTaken) {
@@ -208,6 +225,8 @@ async function createLocalBooking(
     name: validatedDraft.name,
     email: validatedDraft.email,
     notes: validatedDraft.notes,
+    status: "confirmed",
+    cancelToken: validatedDraft.cancelToken,
     id: validatedDraft.id,
     createdAt: validatedDraft.createdAt
   };
@@ -228,6 +247,7 @@ export async function createBooking(draft: BookingDraft): Promise<Booking> {
       .from("bookings")
       .select("id")
       .eq("start_time", validatedDraft.slotStart)
+      .eq("status", "confirmed")
       .maybeSingle();
 
     if (lookupError) {
@@ -248,6 +268,8 @@ export async function createBooking(draft: BookingDraft): Promise<Booking> {
         start_time: validatedDraft.slotStart,
         end_time: validatedDraft.slotEnd,
         timezone: validatedDraft.timezone,
+        status: "confirmed",
+        cancel_token: validatedDraft.cancelToken,
         created_at: validatedDraft.createdAt
       })
       .select("*")
@@ -269,6 +291,90 @@ export async function createBooking(draft: BookingDraft): Promise<Booking> {
   }
 
   return createLocalBooking(validatedDraft);
+}
+
+export async function cancelBooking(
+  bookingId: string,
+  cancelToken: string
+): Promise<{ booking: Booking; alreadyCancelled: boolean }> {
+  const storageMode = getStorageMode();
+  const cancelledAt = new Date().toISOString();
+
+  if (storageMode === "supabase") {
+    const supabase = getSupabaseServerClient();
+    const { data: existingBooking, error: lookupError } = await supabase!
+      .from("bookings")
+      .select("*")
+      .eq("id", bookingId)
+      .eq("cancel_token", cancelToken)
+      .maybeSingle();
+
+    if (lookupError) {
+      throw new Error(lookupError.message);
+    }
+
+    if (!existingBooking) {
+      throw new Error("Booking not found or cancellation link is invalid.");
+    }
+
+    const booking = rowToBooking(existingBooking as BookingRow);
+
+    if (booking.status === "cancelled") {
+      return { booking, alreadyCancelled: true };
+    }
+
+    const { data, error } = await supabase!
+      .from("bookings")
+      .update({
+        status: "cancelled",
+        cancelled_at: cancelledAt
+      })
+      .eq("id", bookingId)
+      .eq("cancel_token", cancelToken)
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return {
+      booking: rowToBooking(data as BookingRow),
+      alreadyCancelled: false
+    };
+  }
+
+  if (storageMode === "not-configured") {
+    throw new Error(storageNotConfiguredMessage);
+  }
+
+  const bookings = await readLocalBookings();
+  const bookingIndex = bookings.findIndex(
+    (booking) => booking.id === bookingId && booking.cancelToken === cancelToken
+  );
+
+  if (bookingIndex === -1) {
+    throw new Error("Booking not found or cancellation link is invalid.");
+  }
+
+  if (bookings[bookingIndex].status === "cancelled") {
+    return {
+      booking: bookings[bookingIndex],
+      alreadyCancelled: true
+    };
+  }
+
+  bookings[bookingIndex] = {
+    ...bookings[bookingIndex],
+    status: "cancelled",
+    cancelledAt
+  };
+  await writeLocalBookings(bookings);
+
+  return {
+    booking: bookings[bookingIndex],
+    alreadyCancelled: false
+  };
 }
 
 export async function updateBookingCalendarSync(

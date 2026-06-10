@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sendBookingConfirmationEmails } from "@/lib/email";
 import {
   createBooking,
   findBooking,
@@ -63,8 +64,9 @@ export async function POST(request: Request) {
       notes: body.notes || ""
     };
     const booking = await createBooking(draft);
+    const emailStatus = await sendBookingConfirmationEmails(booking);
 
-    return NextResponse.json({ booking }, { status: 201 });
+    return NextResponse.json({ booking, emailStatus }, { status: 201 });
   } catch (error) {
     const message =
       error instanceof Error

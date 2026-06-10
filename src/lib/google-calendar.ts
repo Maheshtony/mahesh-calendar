@@ -75,6 +75,7 @@ function googleEventToBooking(event: {
     name,
     email: privateFields.email || "",
     notes: privateFields.notes || "",
+    status: "confirmed",
     createdAt: event.created || new Date().toISOString(),
     calendarSync: {
       status: "created",

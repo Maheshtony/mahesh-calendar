@@ -10,7 +10,7 @@ import {
   isValidEmail
 } from "@/lib/slots";
 import { useBookingStore } from "@/store/booking-store";
-import type { Booking, CalendarSync } from "@/types/booking";
+import type { Booking, EmailDeliveryResult } from "@/types/booking";
 
 export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
   const router = useRouter();
@@ -61,7 +61,7 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
 
     const payload = (await response.json()) as {
       booking?: Booking;
-      calendarSync?: CalendarSync;
+      emailStatus?: EmailDeliveryResult;
       message?: string;
     };
 
@@ -75,7 +75,15 @@ export function BookingForm({ onBooked }: { onBooked: () => Promise<void> }) {
 
     setConfirmation(payload.booking);
     await onBooked();
-    router.push(`/confirmation?id=${payload.booking.id}`);
+    const params = new URLSearchParams({
+      id: payload.booking.id
+    });
+
+    if (payload.emailStatus?.status) {
+      params.set("emailStatus", payload.emailStatus.status);
+    }
+
+    router.push(`/confirmation?${params.toString()}`);
   }
 
   return (

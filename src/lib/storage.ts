@@ -21,6 +21,10 @@ type BookingRow = {
   status?: "confirmed" | "cancelled";
   cancelled_at?: string | null;
   cancel_token?: string | null;
+  google_event_id?: string | null;
+  google_event_html_link?: string | null;
+  calendar_sync_status?: Booking["calendarSyncStatus"] | null;
+  calendar_synced_at?: string | null;
 };
 
 type ValidatedBookingDraft = {
@@ -57,6 +61,10 @@ function rowToBooking(row: BookingRow): Booking {
     status: row.status || "confirmed",
     cancelledAt: row.cancelled_at || undefined,
     cancelToken: row.cancel_token || undefined,
+    googleEventId: row.google_event_id || undefined,
+    googleEventHtmlLink: row.google_event_html_link || undefined,
+    calendarSyncStatus: row.calendar_sync_status || undefined,
+    calendarSyncedAt: row.calendar_synced_at || undefined,
     createdAt: row.created_at
   };
 }
@@ -394,10 +402,40 @@ export async function cancelBooking(
 
 export async function updateBookingCalendarSync(
   bookingId: string,
-  calendarSync: CalendarSync
+  calendarSync: CalendarSync & {
+    googleEventId?: string;
+    googleEventHtmlLink?: string;
+    syncedAt?: string;
+  }
 ): Promise<Booking | null> {
-  if (getStorageMode() !== "local-json") {
-    return findBooking(bookingId);
+  const storageMode = getStorageMode();
+  const syncStatus =
+    calendarSync.status === "created" ? "synced" : calendarSync.status;
+  const syncedAt = calendarSync.syncedAt || new Date().toISOString();
+
+  if (storageMode === "supabase") {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase!
+      .from("bookings")
+      .update({
+        google_event_id: calendarSync.googleEventId || null,
+        google_event_html_link: calendarSync.googleEventHtmlLink || null,
+        calendar_sync_status: syncStatus,
+        calendar_synced_at: syncedAt
+      })
+      .eq("id", bookingId)
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return rowToBooking(data as BookingRow);
+  }
+
+  if (storageMode === "not-configured") {
+    throw new Error(storageNotConfiguredMessage);
   }
 
   const bookings = await readLocalBookings();
@@ -409,7 +447,59 @@ export async function updateBookingCalendarSync(
 
   bookings[bookingIndex] = {
     ...bookings[bookingIndex],
-    calendarSync
+    calendarSync,
+    googleEventId: calendarSync.googleEventId,
+    googleEventHtmlLink: calendarSync.googleEventHtmlLink,
+    calendarSyncStatus: syncStatus,
+    calendarSyncedAt: syncedAt
+  };
+
+  await writeLocalBookings(bookings);
+
+  return bookings[bookingIndex];
+}
+
+export async function markBookingCalendarCancelled(
+  bookingId: string,
+  status: "cancelled" | "cancel_failed"
+): Promise<Booking | null> {
+  const storageMode = getStorageMode();
+  const syncedAt = new Date().toISOString();
+
+  if (storageMode === "supabase") {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase!
+      .from("bookings")
+      .update({
+        calendar_sync_status: status,
+        calendar_synced_at: syncedAt
+      })
+      .eq("id", bookingId)
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return rowToBooking(data as BookingRow);
+  }
+
+  if (storageMode === "not-configured") {
+    throw new Error(storageNotConfiguredMessage);
+  }
+
+  const bookings = await readLocalBookings();
+  const bookingIndex = bookings.findIndex((booking) => booking.id === bookingId);
+
+  if (bookingIndex === -1) {
+    return null;
+  }
+
+  bookings[bookingIndex] = {
+    ...bookings[bookingIndex],
+    calendarSyncStatus: status,
+    calendarSyncedAt: syncedAt
   };
 
   await writeLocalBookings(bookings);

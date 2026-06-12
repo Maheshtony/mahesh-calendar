@@ -3,6 +3,8 @@ import {
   getGoogleCalendarEnvStatus,
   getGooglePrivateKey
 } from "@/lib/env-validation";
+import { getCancelLink } from "@/lib/calendar-links";
+import { formatDurationLabel } from "@/lib/slots";
 import type { Booking, CalendarSync } from "@/types/booking";
 
 type BusyRange = {
@@ -87,7 +89,13 @@ function googleEventToBooking(event: {
 
 export async function createGoogleCalendarEvent(
   booking: Booking
-): Promise<CalendarSync> {
+): Promise<
+  CalendarSync & {
+    googleEventId?: string;
+    googleEventHtmlLink?: string;
+    syncedAt?: string;
+  }
+> {
   const client = getCalendarClient();
 
   if (!client) {
@@ -98,22 +106,45 @@ export async function createGoogleCalendarEvent(
   }
 
   try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+    const dashboardSecret = process.env.ADMIN_DASHBOARD_SECRET?.trim();
+    const dashboardLink =
+      appUrl && dashboardSecret
+        ? `${appUrl.replace(/\/$/, "")}/admin?secret=${encodeURIComponent(
+            dashboardSecret
+          )}`
+        : "";
+    const cancelLink = getCancelLink(booking, appUrl);
     const response = await client.calendar.events.insert({
       calendarId: client.calendarId,
       requestBody: {
         summary: `Meeting with ${booking.name}`,
         description: [
+          `Client name: ${booking.name}`,
           `Email: ${booking.email}`,
           `Notes: ${booking.notes || "None"}`,
-          `Timezone: ${booking.timezone}`
-        ].join("\n"),
+          `Duration: ${formatDurationLabel(booking.slotStart, booking.slotEnd)}`,
+          `Client timezone: ${booking.timezone}`,
+          `Booking id: ${booking.id}`,
+          cancelLink ? `Cancel booking: ${cancelLink}` : "",
+          dashboardLink ? `Dashboard: ${dashboardLink}` : ""
+        ]
+          .filter(Boolean)
+          .join("\n"),
         start: {
           dateTime: booking.slotStart,
-          timeZone: "UTC"
+          timeZone: booking.timezone || "UTC"
         },
         end: {
           dateTime: booking.slotEnd,
-          timeZone: "UTC"
+          timeZone: booking.timezone || "UTC"
+        },
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: "popup", minutes: 30 },
+            { method: "popup", minutes: 10 }
+          ]
         },
         extendedProperties: {
           private: {
@@ -130,15 +161,53 @@ export async function createGoogleCalendarEvent(
     return {
       status: "created",
       message: "Google Calendar event created.",
-      eventId: response.data.id || undefined
+      eventId: response.data.id || undefined,
+      googleEventId: response.data.id || undefined,
+      googleEventHtmlLink: response.data.htmlLink || undefined,
+      syncedAt: new Date().toISOString()
     };
   } catch (error) {
+    console.error("[google-calendar] Event creation failed", error);
+
     return {
       status: "failed",
       message:
         error instanceof Error
           ? error.message
           : "Google Calendar event creation failed."
+    };
+  }
+}
+
+export async function deleteGoogleCalendarEvent(eventId?: string | null) {
+  const client = getCalendarClient();
+
+  if (!client || !eventId) {
+    return {
+      status: "skipped" as const,
+      message: "Google Calendar is not configured."
+    };
+  }
+
+  try {
+    await client.calendar.events.delete({
+      calendarId: client.calendarId,
+      eventId
+    });
+
+    return {
+      status: "cancelled" as const,
+      message: "Google Calendar event removed."
+    };
+  } catch (error) {
+    console.error("[google-calendar] Event deletion failed", error);
+
+    return {
+      status: "cancel_failed" as const,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Google Calendar event deletion failed."
     };
   }
 }

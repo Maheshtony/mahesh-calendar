@@ -81,6 +81,18 @@ function paragraph(label: string, value: string) {
   return `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`;
 }
 
+function getDashboardLink(appUrl: string) {
+  const secret = process.env.ADMIN_DASHBOARD_SECRET?.trim();
+
+  if (!appUrl || !secret) {
+    return "";
+  }
+
+  return `${appUrl.replace(/\/$/, "")}/admin?secret=${encodeURIComponent(
+    secret
+  )}`;
+}
+
 export async function sendBookingConfirmationEmails(
   booking: Booking
 ): Promise<EmailDeliveryResult> {
@@ -103,6 +115,8 @@ export async function sendBookingConfirmationEmails(
     appUrl
   );
   const icsLink = getIcsLink(booking.id, appUrl);
+  const dashboardLink = getDashboardLink(appUrl);
+  const ownerSubjectTime = times.mahesh;
 
   try {
     await Promise.all([
@@ -126,15 +140,17 @@ export async function sendBookingConfirmationEmails(
       config.resend.emails.send({
         from: config.from,
         to: config.maheshEmail,
-        subject: `New booking: ${booking.name}`,
+        subject: `New booking: ${booking.name} - ${ownerSubjectTime}`,
         html: `
           <h1>New booking</h1>
           ${paragraph("Client name", booking.name)}
+          ${paragraph("Meeting time", times.mahesh)}
+          ${paragraph("Duration", duration)}
           ${paragraph("Client email", booking.email)}
           ${paragraph("Notes", booking.notes || "None")}
           ${paragraph("Selected time", times.client)}
-          ${paragraph("Mahesh IST time", times.mahesh)}
-          ${paragraph("Duration", duration)}
+          ${booking.googleEventHtmlLink ? `<p><a href="${escapeHtml(booking.googleEventHtmlLink)}">Open Google Calendar event</a></p>` : ""}
+          ${dashboardLink ? `<p><a href="${escapeHtml(dashboardLink)}">Open dashboard</a></p>` : ""}
           <p><a href="${escapeHtml(cancelLink)}">Cancel/manage booking</a></p>
         `
       })
@@ -168,6 +184,9 @@ export async function sendCancellationEmails(
 
   const times = bookingTimes(booking);
   const duration = formatDurationLabel(booking.slotStart, booking.slotEnd);
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+  const dashboardLink = getDashboardLink(appUrl);
+  const ownerSubjectTime = times.mahesh;
 
   try {
     await Promise.all([
@@ -187,14 +206,16 @@ export async function sendCancellationEmails(
       config.resend.emails.send({
         from: config.from,
         to: config.maheshEmail,
-        subject: `Booking cancelled: ${booking.name}`,
+        subject: `Booking cancelled: ${booking.name} - ${ownerSubjectTime}`,
         html: `
           <h1>Booking cancelled</h1>
           ${paragraph("Client name", booking.name)}
+          ${paragraph("Meeting time", times.mahesh)}
+          ${paragraph("Duration", duration)}
           ${paragraph("Client email", booking.email)}
           ${paragraph("Cancelled meeting time", times.client)}
-          ${paragraph("Mahesh IST time", times.mahesh)}
-          ${paragraph("Duration", duration)}
+          ${booking.googleEventHtmlLink ? `<p><a href="${escapeHtml(booking.googleEventHtmlLink)}">Google Calendar event</a></p>` : ""}
+          ${dashboardLink ? `<p><a href="${escapeHtml(dashboardLink)}">Open dashboard</a></p>` : ""}
         `
       })
     ]);

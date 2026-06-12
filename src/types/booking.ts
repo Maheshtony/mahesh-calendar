@@ -18,6 +18,15 @@ export type Booking = {
   cancelledAt?: string;
   cancelToken?: string;
   calendarSync?: CalendarSync;
+  googleEventId?: string;
+  googleEventHtmlLink?: string;
+  calendarSyncStatus?:
+    | "synced"
+    | "skipped"
+    | "failed"
+    | "cancelled"
+    | "cancel_failed";
+  calendarSyncedAt?: string;
   createdAt: string;
 };
 

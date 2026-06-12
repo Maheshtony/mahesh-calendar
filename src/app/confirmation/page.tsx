@@ -34,6 +34,22 @@ function getEmailStatusMessage(status: string | null) {
   return "";
 }
 
+function getCalendarStatusMessage(status?: Booking["calendarSyncStatus"]) {
+  if (status === "synced") {
+    return "Added to Mahesh's calendar.";
+  }
+
+  if (status === "skipped") {
+    return "Mahesh has been notified.";
+  }
+
+  if (status === "failed") {
+    return "Booking saved. Mahesh has been notified by email.";
+  }
+
+  return "";
+}
+
 function ConfirmationContent() {
   const searchParams = useSearchParams();
   const confirmation = useBookingStore((state) => state.confirmation);
@@ -43,6 +59,9 @@ function ConfirmationContent() {
     searchParams.get("emailStatus")
   );
   const clientTimezone = booking?.timezone || timezone;
+  const calendarStatusMessage = getCalendarStatusMessage(
+    booking?.calendarSyncStatus
+  );
   const appUrl =
     typeof window !== "undefined" ? getAppUrl(window.location.origin) : "";
 
@@ -129,6 +148,11 @@ function ConfirmationContent() {
             <p className="rounded-md bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
               Booking saved successfully.
             </p>
+            {calendarStatusMessage ? (
+              <p className="rounded-md bg-[#eef8fa] p-3 text-sm font-bold text-ocean">
+                {calendarStatusMessage}
+              </p>
+            ) : null}
             {emailStatusMessage ? (
               <p className="rounded-md bg-slate-50 p-3 text-sm font-bold text-slate-500">
                 {emailStatusMessage}

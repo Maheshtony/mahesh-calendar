@@ -24,6 +24,18 @@ function getCancellationEmailMessage(emailStatus: EmailDeliveryResult | null) {
   return emailStatus.message;
 }
 
+function getCalendarCancelMessage(booking: Booking | null) {
+  if (booking?.calendarSyncStatus === "cancelled") {
+    return "Removed from Mahesh's calendar.";
+  }
+
+  if (booking?.status === "cancelled") {
+    return "Booking cancelled.";
+  }
+
+  return "";
+}
+
 function CancelContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
@@ -40,6 +52,7 @@ function CancelContent() {
   const clientTimezone = booking?.timezone || timezone;
   const isCancelled = booking?.status === "cancelled";
   const emailMessage = getCancellationEmailMessage(emailStatus);
+  const calendarCancelMessage = getCalendarCancelMessage(booking);
 
   useEffect(() => {
     setTimezone(getVisitorTimezone());
@@ -166,6 +179,11 @@ function CancelContent() {
             {message ? (
               <p className="rounded-md bg-amber-50 p-4 text-sm font-bold text-amber-800">
                 {message}
+              </p>
+            ) : null}
+            {calendarCancelMessage ? (
+              <p className="rounded-md bg-slate-50 p-3 text-sm font-bold text-slate-600">
+                {calendarCancelMessage}
               </p>
             ) : null}
             {emailMessage ? (

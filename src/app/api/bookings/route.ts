@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { sendBookingConfirmationEmails } from "@/lib/email";
+import { createGoogleCalendarEvent } from "@/lib/google-calendar";
 import {
   createBooking,
   findBooking,
-  readBookings
+  readBookings,
+  updateBookingCalendarSync
 } from "@/lib/storage";
 import type { BookingDraft } from "@/types/booking";
 
@@ -64,9 +66,22 @@ export async function POST(request: Request) {
       notes: body.notes || ""
     };
     const booking = await createBooking(draft);
-    const emailStatus = await sendBookingConfirmationEmails(booking);
+    const calendarSync = await createGoogleCalendarEvent(booking);
+    let syncedBooking = booking;
 
-    return NextResponse.json({ booking, emailStatus }, { status: 201 });
+    try {
+      syncedBooking =
+        (await updateBookingCalendarSync(booking.id, calendarSync)) || booking;
+    } catch (syncError) {
+      console.error("[api/bookings] Calendar sync persistence failed", syncError);
+    }
+
+    const emailStatus = await sendBookingConfirmationEmails(syncedBooking);
+
+    return NextResponse.json(
+      { booking: syncedBooking, emailStatus },
+      { status: 201 }
+    );
   } catch (error) {
     const message =
       error instanceof Error
